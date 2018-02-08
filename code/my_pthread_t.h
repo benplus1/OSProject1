@@ -22,15 +22,13 @@ typedef uint my_pthread_t;
 typedef struct threadControlBlock {
 	/* add something here */
 	struct tcb * left;
+	struct tcb * right;
 	my_pthread_t * tid;
-	ucontext_t context;
+	ucontext_t * context;
 	int state;
 
 } tcb; 
 
-typedef struct levelQueue{
-	struct tcb * front;
-} lq;
 
 /* mutex struct definition */
 typedef struct my_pthread_mutex_t {
@@ -39,6 +37,9 @@ typedef struct my_pthread_mutex_t {
 
 /* define your data structures here: */
 
+typedef struct levelQueue{
+	struct tcb * front;
+} lq;
 // Feel free to add your own auxiliary data structures
 
 

@@ -8,34 +8,55 @@
 
 #include "my_pthread_t.h"
 
-struct tcb ** scheduler;
+lq ** scheduler;
 
 int mem=4096;
 
 void init(){
-	scheduler=(struct tcb **)malloc(sizeof(tcb *)*3);
-	scheduler[0]=( struct tcb *)malloc(sizeof(tcb));
-	scheduler[1]=( struct tcb *)malloc(sizeof(tcb));
-	scheduler[2]=( struct tcb *)malloc(sizeof(tcb));
+	scheduler=(struct levelQueue *) malloc(sizeof( struct levelQueue)*3);
+	scheduler[0]->front=NULL;
+	scheduler[1]->front=NULL;
+	scheduler[2]->front=NULL;
 }
 
-ucontext_t init_context(void* func){
-	ucontext_t t;
+ucontext_t * init_context(void* func){
+	ucontext_t * t=(ucontext_t *) malloc(sizeof(ucontext_t));
 	getcontext(&t);
-	t.uc_link=0;
-	t.uc_stack.ss_sp=malloc(mem);
-	t.uc_stack.ss_size=mem;
-	t.uc_stack.ss_flags=0;
+	t->uc_link=0;
+	t->uc_stack.ss_sp=malloc(mem);
+	t->uc_stack.ss_size=mem;
+	t->uc_stack.ss_flags=0;
 	makecontext(&t,func, 0);
 	return t;
+}
+
+tcb * init_tcb(ucontext_t * context, my_pthread_t * tid){
+	tcb * curr=(tcb *)malloc(sizeof(tcb *));
+	curr->context=context;
+	curr->tid=tid;
+	return curr;
+}
+
+void enqueue(tcb * curr, int priority){
+	lq * currlq =scheduler[priority];
+	tcb * ptr=currlq->front;
+	if(ptr==NULL){
+		ptr=curr;
+	}else{
+		while(ptr->right!=NULL){
+			ptr=ptr->right;
+		}
+		ptr->right=curr;
+		curr->left=ptr;
+	}
 }
 
 
 /* create a new thread */
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
-	ucontext_t my_context = init_context(function);
-	setcontext(&my_context);
-
+	ucontext_t * my_context = init_context(function);
+	//setcontext(&my_context);
+	tcb * curr= init_tcb(my_context, thread);
 	return 0;
 };
 
