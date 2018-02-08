@@ -8,21 +8,34 @@
 
 #include "my_pthread_t.h"
 
-struct tcb ** scheduler; 
+struct tcb ** scheduler;
+
+int mem=4096;
 
 void init(){
 	scheduler=(struct tcb **)malloc(sizeof(tcb *)*3);
-	scheduler[0]=( struct tcb *)malloc(sizeof(tcb));	
+	scheduler[0]=( struct tcb *)malloc(sizeof(tcb));
 	scheduler[1]=( struct tcb *)malloc(sizeof(tcb));
 	scheduler[2]=( struct tcb *)malloc(sizeof(tcb));
+}
+
+ucontext_t init_context(void* func){
+	ucontext_t t;
+	getcontext(&t);
+	t.uc_link=0;
+	t.uc_stack.ss_sp=malloc(mem);
+	t.uc_stack.ss_size=mem;
+	t.uc_stack.ss_flags=0;
+	makecontext(&t,func, 0);
+	return t;
 }
 
 
 /* create a new thread */
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
-	
+	ucontext_t my_context = init_context(function);
+	setcontext(&my_context);
 
-	
 	return 0;
 };
 
@@ -59,4 +72,3 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 	return 0;
 };
-

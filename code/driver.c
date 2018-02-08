@@ -7,8 +7,14 @@
 #include<sys/time.h>
 #include "my_pthread.c"
 
+void my_function(){
+	printf("HELLO THERE\n");
+}
 
 int main(int argc, char ** argv){
-	init();	
+	init();
+	my_pthread_t * thread;
+	my_pthread_create(thread,NULL,(void*)&my_function,NULL);
+
 
 }
