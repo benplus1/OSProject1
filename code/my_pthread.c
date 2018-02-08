@@ -8,8 +8,21 @@
 
 #include "my_pthread_t.h"
 
+struct tcb ** scheduler; 
+
+void init(){
+	scheduler=(struct tcb **)malloc(sizeof(tcb *)*3);
+	scheduler[0]=( struct tcb *)malloc(sizeof(tcb));	
+	scheduler[1]=( struct tcb *)malloc(sizeof(tcb));
+	scheduler[2]=( struct tcb *)malloc(sizeof(tcb));
+}
+
+
 /* create a new thread */
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
+	
+
+	
 	return 0;
 };
 
