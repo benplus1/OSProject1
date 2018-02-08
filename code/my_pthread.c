@@ -13,20 +13,24 @@ lq ** scheduler;
 int mem=4096;
 
 void init(){
-	scheduler=(struct levelQueue *) malloc(sizeof( struct levelQueue)*3);
-	scheduler[0]->front=NULL;
-	scheduler[1]->front=NULL;
-	scheduler[2]->front=NULL;
+	printf("Vro\n");
+	scheduler=(lq **) malloc(sizeof(lq *)*3);
+	(*(scheduler))=(lq *)malloc(sizeof(lq));	
+	(*(scheduler))->front=NULL;
+	(*(scheduler+1))=(lq *)malloc(sizeof(lq));	
+	(*(scheduler+1))->front=NULL;
+	(*(scheduler+2))=(lq *)malloc(sizeof(lq));	
+	(*(scheduler+2))->front=NULL;
 }
 
 ucontext_t * init_context(void* func){
 	ucontext_t * t=(ucontext_t *) malloc(sizeof(ucontext_t));
-	getcontext(&t);
+	getcontext(t);
 	t->uc_link=0;
 	t->uc_stack.ss_sp=malloc(mem);
 	t->uc_stack.ss_size=mem;
 	t->uc_stack.ss_flags=0;
-	makecontext(&t,func, 0);
+	makecontext(t,func, 0);
 	return t;
 }
 
@@ -49,6 +53,7 @@ void enqueue(tcb * curr, int priority){
 		ptr->right=curr;
 		curr->left=ptr;
 	}
+	printf("Enqueued\n");
 }
 
 
@@ -57,6 +62,7 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	ucontext_t * my_context = init_context(function);
 	//setcontext(&my_context);
 	tcb * curr= init_tcb(my_context, thread);
+	enqueue(curr, 0);	
 	return 0;
 };
 
