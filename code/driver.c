@@ -6,9 +6,10 @@
 #include<unistd.h>
 #include<sys/time.h>
 #include "my_pthread.c"
-
+my_pthread_mutex_t mutex;
 void func1(){
 	printf("HELLO THERE\n");
+	my_pthread_mutex_lock(&mutex);
 	/*while(1==1){
 		
 	}*/
@@ -20,8 +21,9 @@ void func2(){
 }
 int main(int argc, char ** argv){
 	init();
-	my_pthread_mutex_t mutex;
+	
 	my_pthread_mutex_init(&mutex, NULL);
+	my_pthread_mutex_lock(&mutex);
 	my_pthread_t * thread;
 	my_pthread_create(thread,NULL,(void*)&func1,NULL);
 	my_pthread_create(thread,NULL,(void*)&func1,NULL);

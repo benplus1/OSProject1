@@ -236,6 +236,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 
 /* initial the mutex lock */
 int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr) {
+	sigprocmask(SIG_SETMASK, &blockSet,NULL);
 	mutex->id = mutexPool->size;
 	mutex->currT = NULL;
 	mutex->waiting = NULL;
@@ -244,18 +245,40 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 	my_pthread_mutex_t* ptr = mutexPool->front;
 	if (ptr == NULL) {
 		mutexPool->front = mutex;
-		return;
+	}else{
+		while(ptr->next != NULL) {
+		if(ptr==mutex){
+			return 0;
+		}
+			ptr = ptr->next;
+		}
+		ptr->next = mutex;
 	}
-	while(ptr->next != NULL) {
-		ptr = ptr->next;
-	}
-	ptr->next = mutex;
+	sigprocmask(SIG_UNBLOCK, &blockSet, NULL);
+		
 	return 0;
 };
 
 /* aquire the mutex lock */
 int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
-	
+	sigprocmask(SIG_SETMASK, &blockSet,NULL);
+	if(mutex->currT==NULL){
+		mutex->currT=&currThread;	
+	}else{
+		wn * ptr=mutex->waiting;
+		wn * waitNode=(wn *)malloc (sizeof(wn));
+		waitNode->curr=&currThread;
+		waitNode->next=NULL;
+		if(ptr==NULL){
+			mutex->waiting=waitNode;
+		}else{
+			while(ptr->next!=NULL){
+				ptr=ptr->next;
+			}
+			ptr->next=waitNode;
+		}
+	}
+	sigprocmask(SIG_UNBLOCK, &blockSet, NULL);
 	return 0;
 };
 

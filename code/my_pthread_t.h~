@@ -42,11 +42,16 @@ typedef struct my_pthread_mutex_t {
 	struct lq * waiting;
 } my_pthread_mutex_t;
 
+typedef struct wait_node{
+	struct wait_node * next;
+	struct tcb ** curr;
+} wn;
+
 /* define your data structures here: */
 typedef struct mutexP{
 	struct my_pthread_mutex_t * front;
 	int size;
-}  mutexPool;
+}  mutexP;
 
 // Feel free to add your own auxiliary data structures
 
