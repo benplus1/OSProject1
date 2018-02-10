@@ -9,13 +9,14 @@
 #include "my_pthread_t.h"
 
 const int RUNNING=0;
-const int WAITING=1;
+const int WAITRES=1;
 const int READY=2;
 const int LOCKING=3;
 const int TERMINATED=4;
+const int WAITLOCK = 5;
 
 
-
+mutexP * mutexPool;
 lq ** scheduler;
 
 int numLevels=3;
@@ -160,6 +161,9 @@ void init(){
 	enqueue(currThread,currThread->priority);
 	//Init tail context for every thread
 
+	//init mutexpool
+	printf("hehexd\n");
+	mutexPool = (mutexP *) malloc(sizeof(mutexP));
 
 	//init alarm
 	while(signal(SIGVTALRM,(void *)&sig_handler)==SIG_ERR);
@@ -212,11 +216,26 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 
 /* initial the mutex lock */
 int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr) {
+	mutex->id = mutexPool->size;
+	mutex->currT = NULL;
+	mutex->waiting = NULL;
+	int i;
+	++(mutexPool->size);
+	my_pthread_mutex_t* ptr = mutexPool->front;
+	if (ptr == NULL) {
+		mutexPool->front = mutex;
+		return;
+	}
+	while(ptr->next != NULL) {
+		ptr = ptr->next;
+	}
+	ptr->next = mutex;
 	return 0;
 };
 
 /* aquire the mutex lock */
 int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
+	
 	return 0;
 };
 

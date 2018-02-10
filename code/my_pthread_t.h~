@@ -46,7 +46,7 @@ typedef struct my_pthread_mutex_t {
 typedef struct mutexP{
 	struct my_pthread_mutex_t * front;
 	int size;
-}  mutexP;
+}  mutexPool;
 
 // Feel free to add your own auxiliary data structures
 
