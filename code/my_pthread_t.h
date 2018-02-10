@@ -17,16 +17,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ucontext.h>
+#include <sys/time.h>
 typedef uint my_pthread_t;
 
 typedef struct threadControlBlock {
 	/* add something here */
-	struct tcb * left;
-	struct tcb * right;
+	struct threadControlBlock * left;
+	struct threadControlBlock * right;
 	my_pthread_t * tid;
 	ucontext_t * context;
 	int state;
-
+	int priority;
 } tcb; 
 
 
@@ -38,7 +39,7 @@ typedef struct my_pthread_mutex_t {
 /* define your data structures here: */
 
 typedef struct levelQueue{
-	struct tcb * front;
+	struct threadControlBlock * front;
 } lq;
 // Feel free to add your own auxiliary data structures
 

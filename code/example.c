@@ -15,6 +15,7 @@ void fn1(){
 }
 
 void pthread_exit(){
+	printf("Exiting\n");
 	setcontext(&t3);
 }
 
@@ -62,6 +63,7 @@ int main(int argc, char ** argv){
 	swapcontext(&t3,&t2);
 	//while(0==0);
 	//swapcontext(&t3,&t1);
+	return 0;
 }
 
 

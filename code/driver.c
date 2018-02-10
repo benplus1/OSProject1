@@ -7,16 +7,26 @@
 #include<sys/time.h>
 #include "my_pthread.c"
 
-void my_function(){
+void func1(){
 	printf("HELLO THERE\n");
-	while(1==1);
+	/*while(1==1){
+		
+	}*/
 }
 
+void func2(){
+	printf("HELLO Vrooooo\n");
+	//while(1==1);
+}
 int main(int argc, char ** argv){
 	init();
 	my_pthread_t * thread;
-	my_pthread_create(thread,NULL,(void*)&my_function,NULL);
-	my_pthread_create(thread,NULL,(void*)&my_function,NULL);
-	
+	my_pthread_create(thread,NULL,(void*)&func1,NULL);
+	my_pthread_create(thread,NULL,(void*)&func1,NULL);
+	my_pthread_create(thread,NULL,(void*)&func1,NULL);
+	my_pthread_create(thread,NULL,(void*)&func1,NULL);
+	my_pthread_create(thread,NULL,(void*)&func1,NULL);
+	printf("We done\n");
+	while(1==1);	
 	//removeThread();
 }
