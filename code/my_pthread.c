@@ -19,6 +19,9 @@ const int WAITLOCK = 5;
 mutexP * mutexPool;
 lq ** scheduler;
 
+sigset_t blockSet;
+sigset_t emptySet;
+
 int numLevels=3;
 int isHandling=0;
 int didStart=0;
@@ -27,6 +30,9 @@ int mem=4096;
 //ucontext_t * tailFunc;
 
 tcb * currThread=NULL;
+
+
+
 
 void sig_handler(){
 	//printf("Caught signal\n");
@@ -45,7 +51,7 @@ void schedule(){
 			if(next_tcb!=NULL) break;
 		}
 
-		while(setitimer(ITIMER_VIRTUAL,&timer,NULL)==-1);
+		//while(setitimer(ITIMER_VIRTUAL,&timer,NULL)==-1);
 		if(next_tcb!=NULL){
 			ucontext_t * next=next_tcb->context;
 			printf("Swapping Context\n");
@@ -53,15 +59,19 @@ void schedule(){
 				ucontext_t * prevContext=currThread->context;
 				currThread=next_tcb;
 				isHandling=0;
+				sigprocmask(SIG_UNBLOCK, &blockSet, NULL);	
 				swapcontext(prevContext, next );
 			}else{
 				isHandling=0;
 				currThread=next_tcb;
+				sigprocmask(SIG_UNBLOCK, &blockSet, NULL);	
 				setcontext(next);
 			}
 		}else{
 			//printf("No new threads to run");
 		}
+		
+		sigprocmask(SIG_UNBLOCK, &blockSet, NULL);	
 		isHandling=0;
 	}
 }
@@ -171,6 +181,12 @@ void init(){
 	timer.it_value.tv_usec=25;
 	timer.it_interval=timer.it_value;
 	while(setitimer(ITIMER_VIRTUAL,&timer,NULL)==-1);
+	
+	//sigprocmask( SIGVTALRM,&set,NULL);
+	sigemptyset(&emptySet);
+	sigemptyset(&blockSet);
+	sigaddset(&blockSet, SIGVTALRM);
+	
 	printf("Done init\n");	
 	//while(1==1);
 }
@@ -179,6 +195,7 @@ void init(){
 
 /* create a new thread */
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
+	sigprocmask(SIG_SETMASK, &blockSet,NULL);
 	ucontext_t * my_context = init_context(function);
 	//setcontext(&my_context);
 	tcb * curr= init_tcb(my_context, thread);
@@ -186,7 +203,8 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	if(!didStart){
 		didStart=1;
 		schedule();
-	}	
+	}
+	sigprocmask(SIG_UNBLOCK, &blockSet,NULL);
 	return 0;
 };
 
@@ -201,12 +219,14 @@ int my_pthread_yield() {
 
 /* terminate a thread */
 void my_pthread_exit(void *value_ptr) {
+	sigprocmask(SIG_SETMASK, &blockSet,NULL);
 	printf("Exiting\n");
 	currThread->state=TERMINATED;
 	removeThread(currThread);
 	currThread=NULL;
 	//my_pthread_yield();	
 	schedule();
+	
 };
 
 /* wait for thread termination */

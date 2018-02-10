@@ -29,6 +29,7 @@ int main(int argc, char ** argv){
 	my_pthread_create(thread,NULL,(void*)&func1,NULL);
 	my_pthread_create(thread,NULL,(void*)&func1,NULL);
 	printf("We done\n");
-	//while(1==1);	
+	while(1==1);	
+	//
 	//removeThread();
 }
