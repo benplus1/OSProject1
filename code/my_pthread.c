@@ -36,7 +36,7 @@ tcb * currThread=NULL;
 
 void sig_handler(){
 	//printf("Caught signal\n");
-	drop(currThread);	
+	drop(currThread);
 	schedule();
 }
 
@@ -47,7 +47,7 @@ void schedule(){
 
 		int i=0;
 		for(i=0;i<numLevels;i++){
-			next_tcb=scheduler[i]->front;
+			next_tcb=scheduler[i]->front; //fix this to take states and multilevel priority queue
 			if(next_tcb!=NULL) break;
 		}
 
@@ -59,19 +59,19 @@ void schedule(){
 				ucontext_t * prevContext=currThread->context;
 				currThread=next_tcb;
 				isHandling=0;
-				sigprocmask(SIG_UNBLOCK, &blockSet, NULL);	
+				sigprocmask(SIG_UNBLOCK, &blockSet, NULL);
 				swapcontext(prevContext, next );
 			}else{
 				isHandling=0;
 				currThread=next_tcb;
-				sigprocmask(SIG_UNBLOCK, &blockSet, NULL);	
+				sigprocmask(SIG_UNBLOCK, &blockSet, NULL);
 				setcontext(next);
 			}
 		}else{
 			//printf("No new threads to run");
 		}
-		
-		sigprocmask(SIG_UNBLOCK, &blockSet, NULL);	
+
+		sigprocmask(SIG_UNBLOCK, &blockSet, NULL);
 		isHandling=0;
 	}
 }
@@ -87,7 +87,7 @@ ucontext_t * init_tail(){
 	return tailFunc;
 }
 
-ucontext_t * init_context(void* func){
+ucontext_t * init_context(void* func, void* arg){
 	ucontext_t * t=(ucontext_t *) malloc(sizeof(ucontext_t));
 	getcontext(t);
 	ucontext_t * tailFunc=init_tail();
@@ -95,7 +95,7 @@ ucontext_t * init_context(void* func){
 	t->uc_stack.ss_sp=malloc(mem);
 	t->uc_stack.ss_size=mem;
 	t->uc_stack.ss_flags=0;
-	makecontext(t,func, 0);
+	makecontext(t,func, 1, arg);
 	return t;
 }
 
@@ -132,7 +132,7 @@ void enqueue(tcb * curr, int priority){
 		ptr->right=curr;
 		curr->left=ptr;
 	}
-	printf("Enqueued\n");
+	//printf("Enqueued\n");
 }
 
 void removeThread(tcb * curr){
@@ -143,24 +143,24 @@ void removeThread(tcb * curr){
 	}
 	if(left!=NULL){
 		left->right=right;
-	}	
+	}
 	if(right!=NULL){
 		right->left=left;
 	}
 	curr->left=NULL;
-	curr->right=NULL;	
-	//curr->state=TERMINATED;	
+	curr->right=NULL;
+	//curr->state=TERMINATED;
 }
 
 void init(){
 	printf("Vro\n");
-	//Init scheduler 
+	//Init scheduler
 	scheduler=(lq **) malloc(sizeof(lq *)*3);
-	(*(scheduler))=(lq *)malloc(sizeof(lq));	
+	(*(scheduler))=(lq *)malloc(sizeof(lq));
 	(*(scheduler))->front=NULL;
-	(*(scheduler+1))=(lq *)malloc(sizeof(lq));	
+	(*(scheduler+1))=(lq *)malloc(sizeof(lq));
 	(*(scheduler+1))->front=NULL;
-	(*(scheduler+2))=(lq *)malloc(sizeof(lq));	
+	(*(scheduler+2))=(lq *)malloc(sizeof(lq));
 	(*(scheduler+2))->front=NULL;
 
 	ucontext_t * prevContext=malloc(sizeof(ucontext_t));
@@ -172,22 +172,21 @@ void init(){
 	//Init tail context for every thread
 
 	//init mutexpool
-	printf("hehexd\n");
 	mutexPool = (mutexP *) malloc(sizeof(mutexP));
 
 	//init alarm
 	while(signal(SIGVTALRM,(void *)&sig_handler)==SIG_ERR);
 	timer.it_value.tv_sec=25/1000;
-	timer.it_value.tv_usec=25;
+	timer.it_value.tv_usec=0;
 	timer.it_interval=timer.it_value;
 	while(setitimer(ITIMER_VIRTUAL,&timer,NULL)==-1);
-	
+
 	//sigprocmask( SIGVTALRM,&set,NULL);
 	sigemptyset(&emptySet);
 	sigemptyset(&blockSet);
 	sigaddset(&blockSet, SIGVTALRM);
-	
-	printf("Done init\n");	
+
+	printf("Done init\n");
 	//while(1==1);
 }
 
@@ -196,7 +195,7 @@ void init(){
 /* create a new thread */
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
 	sigprocmask(SIG_SETMASK, &blockSet,NULL);
-	ucontext_t * my_context = init_context(function);
+	ucontext_t * my_context = init_context(function,  arg);
 	//setcontext(&my_context);
 	tcb * curr= init_tcb(my_context, thread);
 	enqueue(curr, 0);
@@ -224,9 +223,9 @@ void my_pthread_exit(void *value_ptr) {
 	currThread->state=TERMINATED;
 	removeThread(currThread);
 	currThread=NULL;
-	//my_pthread_yield();	
+	//my_pthread_yield();
 	schedule();
-	
+
 };
 
 /* wait for thread termination */
@@ -255,7 +254,7 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 		ptr->next = mutex;
 	}
 	sigprocmask(SIG_UNBLOCK, &blockSet, NULL);
-		
+
 	return 0;
 };
 
@@ -263,7 +262,7 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
 	sigprocmask(SIG_SETMASK, &blockSet,NULL);
 	if(mutex->currT==NULL){
-		mutex->currT=&currThread;	
+		mutex->currT=&currThread;
 	}else{
 		wn * ptr=mutex->waiting;
 		wn * waitNode=(wn *)malloc (sizeof(wn));
