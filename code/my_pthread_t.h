@@ -38,13 +38,13 @@ typedef struct levelQueue{
 typedef struct my_pthread_mutex_t {
 	int id;
 	struct my_pthread_mutex_t * next;
-	struct my_pthread_t * currT;
+	struct threadControlBlock * currT;
 	struct wn * waiting;
 } my_pthread_mutex_t;
 
 typedef struct wait_node{
 	struct wait_node * next;
-	struct tcb ** curr;
+	struct threadControlBlock * curr;
 } wn;
 
 /* define your data structures here: */
