@@ -24,10 +24,12 @@ typedef struct threadControlBlock {
 	/* add something here */
 	struct threadControlBlock * left;
 	struct threadControlBlock * right;
+	struct  wait_node * waiting;
 	my_pthread_t * tid;
 	ucontext_t * context;
 	int state;
 	int priority;
+	void * res;
 } tcb; 
 
 typedef struct levelQueue{
