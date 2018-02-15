@@ -24,6 +24,10 @@ void fn2(){
 	//setcontext(&t3);
 }
 
+void wrapper(void *(*function)(void*), void * arg){
+	void * res=function(arg);
+}	printf("%d\n",*(res));
+
 void sig_handler(){
 	printf("Caught signal");
 	setcontext(&t3);	

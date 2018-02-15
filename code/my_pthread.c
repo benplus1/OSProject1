@@ -116,7 +116,7 @@ ucontext_t * init_tail(){
 
 ucontext_t * init_context(void* func, void* arg){
 	ucontext_t * t=(ucontext_t *) malloc(sizeof(ucontext_t));
-	getcontext(t);
+	while(getcontext(t)==-1);
 	ucontext_t * tailFunc=init_tail();
 	t->uc_link=tailFunc;
 	t->uc_stack.ss_sp=malloc(mem);
@@ -375,6 +375,17 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 
 /* destroy the mutex */
 int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
-
+	
+	//NEED to fix
+	sigprocmask(SIG_SETMASK, &blockSet,NULL);
+	if(mutex->currT!=NULL){
+		mutex->currT->state=READY;
+	}
+	wn * ptr= mutex->waiting;
+	while(ptr!=NULL){
+		ptr->curr->state=READY;
+	}	
+	my_pthread_yield();
+	
 	return 0;
 };

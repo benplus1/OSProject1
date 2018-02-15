@@ -10,18 +10,36 @@
 my_pthread_mutex_t mutex;
 void func1(){
 	my_pthread_mutex_lock(&mutex);
-	printf("HELLO THERE\n");
-	my_pthread_mutex_unlock(&mutex);
+	//my_pthread_mutex_unlock(&mutex);
 //	while(1==1);
 	/*while(1==1){
 
 	}*/
+	int i=0;
+	while(i<1000){
+		i++;
+	}
+	//delay(100);
+	printf("HELLO THERE\n");
+}
+void delay(int milliseconds)
+{
+    long pause;
+    clock_t now,then;
+
+    pause = milliseconds*(CLOCKS_PER_SEC/1000);
+    now = then = clock();
+    while( (now-then) < pause )
+        now = clock();
 }
 
-void func2(int x){
+func2(int x){
 	//while(1==1);
 	//my_pthread_mutex_lock(&mutex);
-	printf("HELLO Vrooooo %d\n", x);
+	while(x>0){
+		printf("HELLO Vrooooo %d\n", x);
+		x--;
+	}
 
 	//while(1==1);	
 	
@@ -30,26 +48,21 @@ int main(int argc, char ** argv){
 	init();
 
 	my_pthread_mutex_init(&mutex, NULL);
-	my_pthread_t  thread;
-	my_pthread_t  other;
-	my_pthread_t  other2;
-	my_pthread_t  other3;
-	/*my_pthread_create(thread,NULL,(void*)&func1,NULL);
-	my_pthread_create(thread,NULL,(void*)&func1,NULL);
-	my_pthread_create(thread,NULL,(void*)&func1,NULL);*/
-	//delay(1);
-	my_pthread_create(other,NULL,(void*)&func2,5);
-	my_pthread_create(other2,NULL,(void*)&func2,2);
-	my_pthread_create(other3,NULL,(void*)&func2,6);
-	my_pthread_create(thread,NULL,(void*)&func1,NULL);
-
+	my_pthread_mutex_lock(&mutex);
+	int i=0;
+	for(i=0;i<10;i++){
+		my_pthread_t  thread;
+		my_pthread_create(thread,NULL,(void*)&func1,i);
+		int x;
+		//my_pthread_join(thread,&x);
+	}
 	//my_pthread_mutex_unlock(&mutex);	
 	//my_pthread_create(thread,NULL,(void*)&func1,NULL);
 	int res;	
-	my_pthread_join(thread,&res);
-	my_pthread_mutex_lock(&mutex);
+	//my_pthread_join(other,&res);
+	//my_pthread_mutex_lock(&mutex);
 	printf("We done\n");
-	//while(1==1);
+	while(1==1);
 	//
 	//removeThread();
 }
