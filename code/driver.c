@@ -8,8 +8,8 @@
 #include<time.h>
 #include "my_pthread.c"
 my_pthread_mutex_t mutex;
-void func1(){
-	my_pthread_mutex_lock(&mutex);
+int func1(){
+	//my_pthread_mutex_lock(&mutex);
 	//my_pthread_mutex_unlock(&mutex);
 //	while(1==1);
 	/*while(1==1){
@@ -21,6 +21,7 @@ void func1(){
 	}
 	//delay(100);
 	printf("HELLO THERE\n");
+	return 2;
 }
 void delay(int milliseconds)
 {
@@ -48,13 +49,14 @@ int main(int argc, char ** argv){
 	init();
 
 	my_pthread_mutex_init(&mutex, NULL);
-	my_pthread_mutex_lock(&mutex);
+	//my_pthread_mutex_lock(&mutex);
 	int i=0;
 	for(i=0;i<10;i++){
 		my_pthread_t  thread;
 		my_pthread_create(thread,NULL,(void*)&func1,i);
-		int x;
-		//my_pthread_join(thread,&x);
+		int * x;
+		my_pthread_join(thread,&x);
+		printf("%d\n", *x);
 	}
 	//my_pthread_mutex_unlock(&mutex);	
 	//my_pthread_create(thread,NULL,(void*)&func1,NULL);

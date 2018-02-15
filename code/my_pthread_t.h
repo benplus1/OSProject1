@@ -29,8 +29,16 @@ typedef struct threadControlBlock {
 	ucontext_t * context;
 	int state;
 	int priority;
-	void * res;
-} tcb; 
+	void ** res;
+	struct wrapperstruct * args;
+	void * func;
+} tcb;
+
+typedef struct wrapperstruct {
+	void * args;
+	void * func;
+	struct threadControlBlock * tcb;
+} ws;
 
 typedef struct levelQueue{
 	struct threadControlBlock * front;

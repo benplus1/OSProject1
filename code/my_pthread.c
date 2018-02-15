@@ -15,7 +15,7 @@ const int LOCKING=3;
 const int TERMINATED=4;
 const int WAITLOCK = 5;
 
-
+//xd
 mutexP * mutexPool;
 lq ** scheduler;
 
@@ -127,16 +127,26 @@ ucontext_t * init_context(void* func, void* arg){
 }
 
 
-tcb * init_tcb(ucontext_t * context, my_pthread_t * tid){
+tcb * init_tcb(my_pthread_t * tid, ws * currArgs, void * func){
 	tcb * curr=(tcb *)malloc(sizeof(tcb));
 	curr->right=NULL;
 	curr->left=NULL;
-	curr->context=context;
 	curr->tid=tid;
 	curr->state=READY;
 	curr->priority=0;
 	curr->waiting=NULL;
-	curr->res=NULL;
+	curr->res=malloc(sizeof(void**));
+	curr->args=currArgs;
+	curr->func=func;
+	if (curr->func != NULL) {
+		(curr->args)->tcb=curr;
+		curr->context=init_context(curr->func, curr->args);
+	}
+	else {
+		ucontext_t * prevContext=malloc(sizeof(ucontext_t));
+		getcontext(prevContext);
+		curr->context=prevContext;
+	}
 	return curr;
 }
 
@@ -159,6 +169,16 @@ tcb * find(my_pthread_t tid){
 		}
 	}
 	return NULL;
+}
+
+void * wrapper(ws * currArgs) {
+	void *(*func)(void*) = currArgs->func;
+	if (func != NULL) {
+		void ** ptr=(currArgs->tcb)->res;
+		int res=func(currArgs->args);
+		*ptr=res;		
+		printf("populated\n");
+	}
 }
 
 void drop(tcb * curr){
@@ -215,7 +235,7 @@ void init(){
 	my_pthread_t * prev_tid;
 	getcontext(prevContext);
 	prevContext->uc_link=init_tail();
-	currThread=init_tcb(prevContext,prev_tid);
+	currThread=init_tcb(prev_tid, NULL, NULL);
 	enqueue(currThread,currThread->priority);
 	//Init tail context for every thread
 
@@ -243,9 +263,14 @@ void init(){
 /* create a new thread */
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
 	sigprocmask(SIG_SETMASK, &blockSet,NULL);
-	ucontext_t * my_context = init_context(function,  arg);
+	//ucontext_t * my_context = init_context(function,  arg);
 	//setcontext(&my_context);
-	tcb * curr= init_tcb(my_context, thread);
+	ws * currArgs = (ws *) malloc(sizeof(ws));
+	currArgs->func = function;
+	currArgs->args = arg;
+	tcb * curr= init_tcb(thread, currArgs, &wrapper);
+	
+
 	enqueue(curr, 0);
 	if(!didStart){
 		didStart=1;
@@ -298,6 +323,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	wn * waitNode=init_wn(currThread);		
 	waitNode->next=target->waiting;
 	target->waiting=waitNode;
+	*value_ptr=(target->res);
 	my_pthread_yield();	
 	return 0;
 };
@@ -376,7 +402,6 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 /* destroy the mutex */
 int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 	
-	//NEED to fix
 	sigprocmask(SIG_SETMASK, &blockSet,NULL);
 	if(mutex->currT!=NULL){
 		mutex->currT->state=READY;
@@ -386,6 +411,6 @@ int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 		ptr->curr->state=READY;
 	}	
 	my_pthread_yield();
-	
+	free(mutex);
 	return 0;
 };
