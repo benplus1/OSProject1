@@ -426,13 +426,13 @@ int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 	my_pthread_mutex_t* ptr = mutexPool->front;
 	my_pthread_mutex_t * prev=NULL;
 	if(mutex->currT!=NULL){
-		mutex->currT->state=READY;
+			my_pthread_yield();
+			return -1;
 	}
-	while(mutex->waiting!=NULL){
-
+	/*while(mutex->waiting!=NULL){
 		((tcb *)(((wn *)(mutex->waiting))->curr))->state=READY;
 		mutex->waiting=((wn *)(mutex->waiting))->next;
-	}
+	}*/
 	while(ptr!= NULL) {
 		if(ptr->id==mutex->id){
 			if(prev!=NULL){
