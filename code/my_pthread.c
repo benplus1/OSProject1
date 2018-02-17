@@ -23,7 +23,7 @@ sigset_t blockSet;
 sigset_t emptySet;
 
 
-
+int threadCount=0;
 int cyclesLeft=0;
 int numLevels=3;
 int isHandling=0;
@@ -95,6 +95,7 @@ void schedule(){
 		}else{
 			//printf("No new threads to run");
 			isHandling=0;
+			printf("Deadlock\n");
 			while(1==1);
 			while(sigprocmask(SIG_UNBLOCK, &blockSet, NULL)<0);
 
@@ -186,21 +187,6 @@ void * wrapper(ws * currArgs) {
 void drop(tcb * curr){
 	removeThread(curr);
 	curr->num_drops++;
-	if( (curr->priority==0 && num_drops >= 25 && num_drops <= 40) {
-		curr->priority = 1;
-	}
-	else if ( (curr->priority==1 && num_drops > 40 && num_drops <= 60) {
-		curr->priority = 2;
-	}
-	else if ( (curr->priority==2 && num_drops > 60 && num_drops <= 80) {
-		curr->priority = 1;
-	}
-	else if ( (curr->priority==1 && num_drops > 80) {
-		curr->priority = 0;
-	}
-	//if(curr->priority<(numLevels-1)){
-	//	curr->priority++;
-	//}
 	enqueue(curr,curr->priority);
 }
 
@@ -248,6 +234,7 @@ void init(){
 
 	ucontext_t * prevContext=malloc(sizeof(ucontext_t));
 	my_pthread_t * prev_tid=(my_pthread_t *)malloc(sizeof(my_pthread_t));;
+	*prev_tid=-1;
 	getcontext(prevContext);
 	prevContext->uc_link=init_tail();
 	currThread=init_tcb(prev_tid, NULL, NULL);
@@ -283,6 +270,8 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	ws * currArgs = (ws *) malloc(sizeof(ws));
 	currArgs->func = function;
 	currArgs->args = arg;
+	*thread=threadCount;
+	threadCount++;
 	tcb * curr= init_tcb(thread, currArgs, &wrapper);
 
 
