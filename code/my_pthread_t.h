@@ -29,6 +29,7 @@ typedef struct threadControlBlock {
 	ucontext_t * context;
 	int state;
 	int priority;
+	int num_drops;
 	void ** res;
 	struct wrapperstruct * args;
 	void * func;

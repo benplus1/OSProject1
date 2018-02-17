@@ -139,6 +139,7 @@ tcb * init_tcb(my_pthread_t * tid, ws * currArgs, void * func){
 	curr->res=malloc(sizeof(void**));
 	curr->args=currArgs;
 	curr->func=func;
+	curr->num_drops=0;
 	if (curr->func != NULL) {
 		(curr->args)->tcb=curr;
 		curr->context=init_context(curr->func, curr->args);
@@ -184,12 +185,22 @@ void * wrapper(ws * currArgs) {
 
 void drop(tcb * curr){
 	removeThread(curr);
-	if(curr->priority<(numLevels-1)){
-		curr->priority++;
+	curr->num_drops++;
+	if( (curr->priority==0 && num_drops >= 25 && num_drops <= 40) {
+		curr->priority = 1;
 	}
-	else if(curr->priority == numLevels-1) {
-		curr->priority++;
+	else if ( (curr->priority==1 && num_drops > 40 && num_drops <= 60) {
+		curr->priority = 2;
 	}
+	else if ( (curr->priority==2 && num_drops > 60 && num_drops <= 80) {
+		curr->priority = 1;
+	}
+	else if ( (curr->priority==1 && num_drops > 80) {
+		curr->priority = 0;
+	}
+	//if(curr->priority<(numLevels-1)){
+	//	curr->priority++;
+	//}
 	enqueue(curr,curr->priority);
 }
 
