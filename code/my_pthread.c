@@ -187,6 +187,9 @@ void drop(tcb * curr){
 	if(curr->priority<(numLevels-1)){
 		curr->priority++;
 	}
+	else if(curr->priority == numLevels-1) {
+		curr->priority++;
+	}
 	enqueue(curr,curr->priority);
 }
 
