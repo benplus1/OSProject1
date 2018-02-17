@@ -25,23 +25,16 @@ void delay(int milliseconds)
 
 func2(int x){
 	int y=0;
-	//y=my_pthread_mutex_unlock(&mutex);	
 	int i=1;
 	delay(4000);
 	printf("Iteration %d\n",i);
-	/*for(i=0;i<20;i++){
-	}*/
 	printf("Result of unlocking:%d\n",y);
 }
 int main(int argc, char ** argv){
 	init();
 	my_pthread_mutex_init(&mutex, NULL);
-	//my_pthread_mutex_lock(&mutex);
 	my_pthread_t  thread;
 	int i=12;
 	my_pthread_create(&thread,NULL,(void*)&func2,i);
-	//int y=my_pthread_mutex_unlock(&mutex);	
-	//printf("%d\n",y);
 	printf("We done\n");
-	while(1==1);
 }

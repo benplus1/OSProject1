@@ -342,7 +342,8 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 		mutexPool->front = mutex;
 	}else{
 		while(ptr->next != NULL) {
-			if(ptr==mutex){
+			if(ptr->id==mutex->id){	
+				sigprocmask(SIG_UNBLOCK, &blockSet,NULL);
 				return 0;
 			}
 			ptr = ptr->next;
@@ -389,6 +390,7 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 	if(mutex->currT==NULL||mutex->currT->tid!=currThread->tid){
 		//printf("Can't do that\n");
 		//my_pthread_yield();
+		sigprocmask(SIG_UNBLOCK, &blockSet,NULL);
 		return -1;
 	}
 	wn * ptr= mutex->waiting;
