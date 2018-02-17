@@ -39,6 +39,7 @@ int func1(){
 	rename( "test_copy.txt", "test.txt" );
 	my_pthread_mutex_unlock(&mutex2);
 }
+
 void delay(int milliseconds)
 {
 	long pause;
@@ -50,16 +51,6 @@ void delay(int milliseconds)
 		now = clock();
 }
 
-int func2(int x){
-	int y=0;
-	int i=1;
-	my_pthread_mutex_lock(&mutex);
-	printf("Length delay %d\n",x);
-	printf("RES%d\n",test);
-	my_pthread_mutex_unlock(&mutex);
-	return x+6;
-}
-
 int main(int argc, char ** argv){
 	init();
 	//my_pthread_mutex_init(&mutex, NULL);
@@ -67,11 +58,12 @@ int main(int argc, char ** argv){
 	int k;
 	//my_pthread_t * arr=(my_pthread_t *)malloc(sizeof(my_pthread_t)*50);
 	//my_pthread_mutex_lock(&mutex);
-	for (k=0;k<50;k++){
+	for (k=1;k<=10;k++){
 		my_pthread_t  thread;
 		//int * i=12;
 		my_pthread_create(&thread,NULL,(void*)&func1,NULL);
 		my_pthread_join(thread, NULL);
 	}
-	delay(5000);
+  printf("HELLO THERE!\n");
+
 }
