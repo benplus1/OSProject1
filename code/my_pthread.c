@@ -52,9 +52,10 @@ void schedule(){
 	if(!isHandling){
 		if(cyclesLeft!=0){
 			cyclesLeft--;
-			sigprocmask(SIG_UNBLOCK, &blockSet, NULL);
+			while(sigprocmask(SIG_UNBLOCK, &blockSet, NULL)<0);
 			return;
 		}
+		printf("Scheduling\n");
 		isHandling=1;
 		tcb * next_tcb;
 		int i=0;
@@ -82,24 +83,24 @@ void schedule(){
 			if(currThread!=NULL){
 				ucontext_t * prevContext=currThread->context;
 				currThread=next_tcb;
-				sigprocmask(SIG_UNBLOCK, &blockSet, NULL);
+				while(sigprocmask(SIG_UNBLOCK, &blockSet, NULL)<0);
 				isHandling=0;
 				swapcontext(prevContext, next );
 			}else{
 				isHandling=0;
 				currThread=next_tcb;
-				sigprocmask(SIG_UNBLOCK, &blockSet, NULL);
+				while(sigprocmask(SIG_UNBLOCK, &blockSet, NULL)<0);
 				setcontext(next);
 			}
 		}else{
 			//printf("No new threads to run");
 			isHandling=0;
 			while(1==1);
-			sigprocmask(SIG_UNBLOCK, &blockSet, NULL);
-		
+			while(sigprocmask(SIG_UNBLOCK, &blockSet, NULL)<0);
+
 		}
 	}
-	sigprocmask(SIG_UNBLOCK, &blockSet, NULL);
+	while(sigprocmask(SIG_UNBLOCK, &blockSet, NULL)<0);
 
 }
 
@@ -162,7 +163,7 @@ tcb * find(my_pthread_t tid){
 	for(i=0;i<numLevels;i++){
 		tcb * ptr=scheduler[i]->front; //fix this to take states and multilevel priority queue
 		while(ptr!=NULL){
-			if(ptr->tid==tid){
+			if(*(ptr->tid)==tid){
 				return ptr;
 			}
 			ptr=ptr->right;
@@ -177,7 +178,7 @@ void * wrapper(ws * currArgs) {
 		void ** ptr=(currArgs->tcb)->res;
 		int res=func(currArgs->args);
 		*ptr=res;		
-		printf("populated\n");
+		//printf("populated\n");
 	}
 }
 
@@ -269,7 +270,7 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	currArgs->func = function;
 	currArgs->args = arg;
 	tcb * curr= init_tcb(thread, currArgs, &wrapper);
-	
+
 
 	enqueue(curr, 0);
 	if(!didStart){
@@ -293,12 +294,12 @@ int my_pthread_yield() {
 void my_pthread_exit(void *value_ptr) {
 	sigprocmask(SIG_SETMASK, &blockSet,NULL);
 	printf("Exiting\n");
-	
-	
+
+
 	currThread->state=TERMINATED;
 	removeThread(currThread);
 	//my_pthread_yield();
-	
+
 	//Update waiting threads
 	while(currThread->waiting!=NULL){
 		currThread->waiting->curr->state=READY;
@@ -348,7 +349,7 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 		}
 		ptr->next = mutex;
 	}
-	
+
 	my_pthread_yield();
 	//sigprocmask(SIG_UNBLOCK, &blockSet, NULL);
 
@@ -385,6 +386,11 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
 int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 	//printf("ulock status %d\n", currThread->state);
 	sigprocmask(SIG_SETMASK, &blockSet,NULL);
+	if(mutex->currT==NULL||mutex->currT->tid!=currThread->tid){
+		//printf("Can't do that\n");
+		//my_pthread_yield();
+		return -1;
+	}
 	wn * ptr= mutex->waiting;
 	((mutex->currT))->state=READY;
 	if(ptr!=NULL){
@@ -401,16 +407,24 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 
 /* destroy the mutex */
 int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
-	
 	sigprocmask(SIG_SETMASK, &blockSet,NULL);
-	if(mutex->currT!=NULL){
-		mutex->currT->state=READY;
+	my_pthread_mutex_t* ptr = mutexPool->front;
+	my_pthread_mutex_t * prev=NULL;
+	while(ptr!= NULL) {
+		if(ptr->id==mutex->id){
+			if(prev!=NULL){
+				prev->next=ptr->next;
+			}else{
+				mutexPool->front=NULL;
+			}
+			free(mutex);
+			my_pthread_yield();
+			return 0;
+		}
+		prev=ptr;
+		ptr = ptr->next;
 	}
-	wn * ptr= mutex->waiting;
-	while(ptr!=NULL){
-		ptr->curr->state=READY;
-	}	
 	my_pthread_yield();
-	free(mutex);
-	return 0;
+	//free(mutex);
+	return -1;
 };
