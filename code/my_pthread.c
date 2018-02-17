@@ -55,7 +55,7 @@ void schedule(){
 			while(sigprocmask(SIG_UNBLOCK, &blockSet, NULL)<0);
 			return;
 		}
-		printf("Scheduling\n");
+		//printf("Scheduling\n");
 		isHandling=1;
 		tcb * next_tcb;
 		int i=0;
@@ -83,14 +83,14 @@ void schedule(){
 			if(currThread!=NULL){
 				ucontext_t * prevContext=currThread->context;
 				currThread=next_tcb;
-				while(sigprocmask(SIG_UNBLOCK, &blockSet, NULL)<0);
 				isHandling=0;
-				swapcontext(prevContext, next );
+				while(sigprocmask(SIG_UNBLOCK, &blockSet, NULL)<0);
+				while(swapcontext(prevContext, next )<0);
 			}else{
 				isHandling=0;
 				currThread=next_tcb;
 				while(sigprocmask(SIG_UNBLOCK, &blockSet, NULL)<0);
-				setcontext(next);
+				while(setcontext(next)<0);
 			}
 		}else{
 			//printf("No new threads to run");
@@ -233,7 +233,7 @@ void init(){
 	}
 
 	ucontext_t * prevContext=malloc(sizeof(ucontext_t));
-	my_pthread_t * prev_tid;
+	my_pthread_t * prev_tid=(my_pthread_t *)malloc(sizeof(my_pthread_t));;
 	getcontext(prevContext);
 	prevContext->uc_link=init_tail();
 	currThread=init_tcb(prev_tid, NULL, NULL);
@@ -305,6 +305,9 @@ void my_pthread_exit(void *value_ptr) {
 		currThread->waiting->curr->state=READY;
 		currThread->waiting=currThread->waiting->next;
 	}
+	if(value_ptr!=NULL){
+		*(&value_ptr)=(currThread->res);
+	}
 	//Adding to dead queue;
 	lq * deadQueue=*(scheduler+numLevels);
 	currThread->right=deadQueue->front;
@@ -319,12 +322,17 @@ void my_pthread_exit(void *value_ptr) {
 int my_pthread_join(my_pthread_t thread, void **value_ptr) {	
 	sigprocmask(SIG_SETMASK, &blockSet,NULL);	
 	tcb * target= find(thread);
-	if(target==NULL||target->state==TERMINATED) return -1;
+	if(target==NULL||target->state==TERMINATED) {
+		sigprocmask(SIG_UNBLOCK, &blockSet,NULL);	
+		return -1;
+	}
 	currThread->state=WAITRES;
 	wn * waitNode=init_wn(currThread);		
 	waitNode->next=target->waiting;
 	target->waiting=waitNode;
-	*value_ptr=(target->res);
+	if(value_ptr!=NULL){
+		*value_ptr=(target->res);
+	}
 	my_pthread_yield();	
 	return 0;
 };
@@ -408,10 +416,19 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 };
 
 /* destroy the mutex */
+//NEED TO TEST
 int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 	sigprocmask(SIG_SETMASK, &blockSet,NULL);
 	my_pthread_mutex_t* ptr = mutexPool->front;
 	my_pthread_mutex_t * prev=NULL;
+	if(mutex->currT!=NULL){
+		mutex->currT->state=READY;
+	}
+	while(mutex->waiting!=NULL){
+		
+		((tcb *)(((wn *)(mutex->waiting))->curr))->state=READY;
+		mutex->waiting=((wn *)(mutex->waiting))->next;
+	}
 	while(ptr!= NULL) {
 		if(ptr->id==mutex->id){
 			if(prev!=NULL){
