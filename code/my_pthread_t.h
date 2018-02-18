@@ -7,9 +7,15 @@
 // iLab Server: 
 #ifndef MY_PTHREAD_T_H
 #define MY_PTHREAD_T_H
-
 #define _GNU_SOURCE
-
+#define pthread_create my_pthread_create 
+#define pthread_yield my_pthread_yield
+#define pthread_exit my_pthread_exit
+#define pthread_join my_pthread_join
+#define pthread_mutex_init my_pthread_mutex_init
+#define pthread_mutex_lock my_pthread_mutex_lock
+#define pthread_mutex_unlock my_pthread_mutex_unlock
+#define pthread_mutex_destroy my_pthread_mutex_destroy
 /* include lib header files that you need here: */
 #include <unistd.h>
 #include <sys/syscall.h>
@@ -30,7 +36,7 @@ typedef struct threadControlBlock {
 	int state;
 	int priority;
 	int num_drops;
-	void ** res;
+	void * res;
 	struct wrapperstruct * args;
 	void * func;
 } tcb;

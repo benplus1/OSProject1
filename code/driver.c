@@ -27,25 +27,28 @@ void delay(int milliseconds)
 int func2(int x){
 	int y=0;
 	int i=1;
-	my_pthread_mutex_lock(&mutex);
-	printf("Length delay %d\n",x);
-	printf("RES%d\n",test);
-	my_pthread_mutex_unlock(&mutex);
+	pthread_mutex_lock(&mutex);
+	printf("X Param %d\n",x);
+	pthread_mutex_unlock(&mutex);
 	return x+6;
 }
 int main(int argc, char ** argv){
 	init();
-	my_pthread_mutex_init(&mutex, NULL);
+	pthread_mutex_init(&mutex, NULL);
 	int k;
-	my_pthread_t * arr=(my_pthread_t *)malloc(sizeof(my_pthread_t)*5);
-	my_pthread_mutex_lock(&mutex);
+	my_pthread_t arr[5];
+	pthread_mutex_lock(&mutex);
 	for (k=0;k<5;k++){
-		my_pthread_t  thread;
+		//my_pthread_t  thread=arr[k];
 		int * i=12;
-		my_pthread_create(&thread,NULL,(void*)&func2,k);
+		int w=k;
+		pthread_create(&(arr[k]),NULL,(void*)&func2,w);
 	}
-	delay(5000);
+	pthread_mutex_unlock(&mutex);
 	printf("Unlocking mutex\n");
-	//my_pthread_mutex_destroy(&mutex);
-	//while(1==1);
+	for (k=0;k<5;k++){
+		int * res;
+		pthread_join(arr[k],&res);
+		printf("Result from thread: %d\n",*res);
+	}
 }

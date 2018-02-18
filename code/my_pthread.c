@@ -177,9 +177,9 @@ tcb * find(my_pthread_t tid){
 void * wrapper(ws * currArgs) {
 	void *(*func)(void*) = currArgs->func;
 	if (func != NULL) {
-		void ** ptr=(currArgs->tcb)->res;
-		int res=func(currArgs->args);
-		*ptr=res;
+		//void * ptr=(currArgs->tcb)->res;
+		void * res=func(currArgs->args);
+		(currArgs->tcb)->res=res;
 		//printf("populated\n");
 	}
 }
@@ -335,7 +335,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	waitNode->next=target->waiting;
 	target->waiting=waitNode;
 	if(value_ptr!=NULL){
-		*value_ptr=(target->res);
+		*value_ptr=&(target->res);
 	}
 	my_pthread_yield();
 	return 0;
