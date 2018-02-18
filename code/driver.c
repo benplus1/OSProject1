@@ -19,6 +19,7 @@ int func2(int x){
 	int i=1;
 	pthread_mutex_lock(&mutex);
 	sleep(2);
+	
 	printf("X Param %d\n",x);
 	pthread_mutex_unlock(&mutex);
 	return x+6;
@@ -51,5 +52,6 @@ int main(int argc, char ** argv){
 		pthread_join(arr[k],&res);
 		printf("Result from thread: %d\n",*res);
 	}
+	printf("We done\n");
 	
 }

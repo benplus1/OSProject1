@@ -19,6 +19,8 @@ const int WAITLOCK = 5;
 mutexP * mutexPool;
 lq ** scheduler;
 
+int enter_mode=0;
+int mode=0;
 sigset_t blockSet;
 sigset_t emptySet;
 
@@ -51,11 +53,17 @@ void * func(void *(*function)(void*), void * arg, tcb * thread){
 	thread->res=value_ptr;
 }
 
+void checkSigHandler(){
+	if(!(__atomic_load_n(&mode,0))){
+		sig_handler();
+	}
+}
+
 void schedule(){
 	if(!isHandling){
 		if(cyclesLeft!=0){
 			cyclesLeft--;
-			while(sigprocmask(SIG_UNBLOCK, &blockSet, NULL)<0);
+			__atomic_clear(&mode,0);	
 			return;
 		}
 		//printf("Scheduling\n");
@@ -81,7 +89,7 @@ void schedule(){
 				}
 				next_tcb=next_tcb->right;
 			}
-			if(next_tcb!=NULL){
+			if(next_tcb!=NULL&&(next_tcb->state==READY||next_tcb->state==LOCKING||next_tcb->state==RUNNING)){
 				break;
 			}
 		}
@@ -90,7 +98,7 @@ void schedule(){
 		  printf("SHEET%d\n", next_tcb->state);
 		  }*/
 		//while(setitimer(ITIMER_VIRTUAL,&timer,NULL)==-1);
-		if(next_tcb!=NULL){
+		if(next_tcb!=NULL&&(next_tcb->state==READY||next_tcb->state==LOCKING||next_tcb->state==RUNNING)){
 			ucontext_t * next=next_tcb->context;
 			//printf("Swapping Context\n");
 			cyclesLeft=next_tcb->priority;
@@ -98,12 +106,12 @@ void schedule(){
 				ucontext_t * prevContext=currThread->context;
 				currThread=next_tcb;
 				isHandling=0;
-				while(sigprocmask(SIG_UNBLOCK, &blockSet, NULL)<0);
+				__atomic_clear(&mode,0);	
 				while(swapcontext(prevContext, next )<0);
 			}else{
 				isHandling=0;
 				currThread=next_tcb;
-				while(sigprocmask(SIG_UNBLOCK, &blockSet, NULL)<0);
+				__atomic_clear(&mode,0);	
 				while(setcontext(next)<0);
 			}
 		}else{
@@ -111,11 +119,11 @@ void schedule(){
 			isHandling=0;
 			printf("Deadlock\n");
 			while(1==1);
-			while(sigprocmask(SIG_UNBLOCK, &blockSet, NULL)<0);
+			__atomic_clear(&mode,0);	
 
 		}
 	}
-	while(sigprocmask(SIG_UNBLOCK, &blockSet, NULL)<0);
+	__atomic_clear(&mode,0);	
 
 }
 
@@ -352,7 +360,7 @@ void init(){
 	mutexPool = (mutexP *) malloc(sizeof(mutexP));
 
 	//init alarm
-	while(signal(SIGVTALRM,(void *)&sig_handler)==SIG_ERR);
+	while(signal(SIGVTALRM,(void *)&checkSigHandler)==SIG_ERR);
 	timer.it_value.tv_sec=25/1000;
 	timer.it_value.tv_usec=250;
 	timer.it_interval=timer.it_value;
@@ -371,12 +379,12 @@ void init(){
 
 /* create a new thread */
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
+	__atomic_test_and_set(&mode,0);
 	if (!been_inited) {
 		init();
 		been_inited=1;
 	}
-
-	sigprocmask(SIG_SETMASK, &blockSet,NULL);
+	
 	//ucontext_t * my_context = init_context(function,  arg);
 	//setcontext(&my_context);
 	ws * currArgs = (ws *) malloc(sizeof(ws));
@@ -392,7 +400,7 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 		didStart=1;
 		schedule();
 	}else{
-		sigprocmask(SIG_UNBLOCK, &blockSet,NULL);
+		__atomic_clear(&mode,0);	
 
 	}
 	return 0;
@@ -401,6 +409,7 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 /* give CPU pocession to other user level threads voluntarily */
 int my_pthread_yield() {
 
+	__atomic_test_and_set(&mode,0);
 	if (!been_inited) {
 		init();
 		been_inited=1;
@@ -416,7 +425,7 @@ void my_pthread_exit(void *value_ptr) {
 		init();
 		been_inited=1;
 	}
-	sigprocmask(SIG_SETMASK, &blockSet,NULL);
+	__atomic_test_and_set(&mode,0);
 	printf("Exiting\n");
 
 
@@ -448,13 +457,12 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 		init();
 		been_inited=1;
 	}
-	sigprocmask(SIG_SETMASK, &blockSet,NULL);
+	__atomic_test_and_set(&mode,0);
 	tcb * target= find(thread);
 	if(target!=NULL&&value_ptr!=NULL){
 		*value_ptr=&(target->res);
 	}
 	if(target==NULL||target->state==TERMINATED) {
-		sigprocmask(SIG_UNBLOCK, &blockSet,NULL);
 		my_pthread_yield();
 		return -1;
 	}
@@ -472,7 +480,7 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 		init();
 		been_inited=1;
 	}
-	sigprocmask(SIG_SETMASK, &blockSet,NULL);
+	__atomic_test_and_set(&mode,0);
 	mutex->id = mutexPool->size;
 	mutex->currT = NULL;
 	mutex->waiting = NULL;
@@ -484,7 +492,7 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 	}else{
 		while(ptr->next != NULL) {
 			if(ptr->id==mutex->id){
-				sigprocmask(SIG_UNBLOCK, &blockSet,NULL);
+				__atomic_clear(&mode,0);
 				return 0;
 			}
 			ptr = ptr->next;
@@ -504,7 +512,7 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
 		init();
 		been_inited=1;
 	}
-	sigprocmask(SIG_SETMASK, &blockSet,NULL);
+	__atomic_test_and_set(&mode,0);
 	if(mutex->currT==NULL){
 		mutex->currT=currThread;
 		currThread->state=LOCKING;
@@ -536,11 +544,11 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 		been_inited=1;
 	}
 	//printf("ulock status %d\n", currThread->state);
-	sigprocmask(SIG_SETMASK, &blockSet,NULL);
+	__atomic_test_and_set(&mode,0);
 	if(mutex->currT==NULL||mutex->currT->tid!=currThread->tid){
 		//printf("Can't do that\n");
 		//my_pthread_yield();
-		sigprocmask(SIG_UNBLOCK, &blockSet,NULL);
+		__atomic_clear(&mode,0);
 		return -1;
 	}
 	wn * ptr= mutex->waiting;
@@ -566,7 +574,7 @@ int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 		init();
 		been_inited=1;
 	}
-	sigprocmask(SIG_SETMASK, &blockSet,NULL);
+	__atomic_test_and_set(&mode,0);
 	my_pthread_mutex_t* ptr = mutexPool->front;
 	my_pthread_mutex_t * prev=NULL;
 	if(mutex->currT!=NULL){
