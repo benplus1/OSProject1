@@ -26,21 +26,6 @@
 #include <sys/time.h>
 typedef uint my_pthread_t;
 
-typedef struct threadControlBlock {
-	/* add something here */
-	struct threadControlBlock * left;
-	struct threadControlBlock * right;
-	struct  wait_node * waiting;
-	my_pthread_t * tid;
-	ucontext_t * context;
-	int state;
-	int priority;
-	int num_drops;
-	void * res;
-	struct wrapperstruct * args;
-	void * func;
-} tcb;
-
 typedef struct wrapperstruct {
 	void * args;
 	void * func;
@@ -69,6 +54,23 @@ typedef struct mutexP{
 	struct my_pthread_mutex_t * front;
 	int size;
 }  mutexP;
+
+typedef struct threadControlBlock {
+	/* add something here */
+	struct threadControlBlock * left;
+	struct threadControlBlock * right;
+	struct  wait_node * waiting;
+	my_pthread_t * tid;
+	ucontext_t * context;
+	int state;
+	struct my_pthread_mutex_t * mutex_id;
+	int wait_skips;
+	int priority;
+	int num_drops;
+	void ** res;
+	struct wrapperstruct * args;
+	void * func;
+} tcb;
 
 // Feel free to add your own auxiliary data structures
 

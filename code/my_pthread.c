@@ -2,9 +2,9 @@
 // Author:	Yujie REN
 // Date:	09/23/2017
 
-// name:
-// username of iLab:
-// iLab Server:
+// name: Hemanth Chiluka, Andrew Dos Reis, Benjamin Yang
+// username of iLab: hkc33, ad1005, bty10
+// iLab Server: adapter
 
 #include "my_pthread_t.h"
 
@@ -22,6 +22,9 @@ lq ** scheduler;
 sigset_t blockSet;
 sigset_t emptySet;
 
+int been_inited=0;
+
+int num_inverted=0;
 
 int threadCount=0;
 int cyclesLeft=0;
@@ -65,6 +68,17 @@ void schedule(){
 				if(next_tcb->state==READY||next_tcb->state==LOCKING||next_tcb->state==RUNNING){
 					break;
 				}
+				else if (next_tcb->state==WAITLOCK) {
+					next_tcb->wait_skips++;
+					if (next_tcb->wait_skips > 10) {
+						tcb * to_be_swapped = (next_tcb->mutex_id)->currT;
+						swap(next_tcb, to_be_swapped);
+						//next_tcb->wait_skips = 0;
+						printf("inverting priority: %d\n", num_inverted);
+						num_inverted++;
+						next_tcb=to_be_swapped;
+					}
+				}
 				next_tcb=next_tcb->right;
 			}
 			if(next_tcb!=NULL){
@@ -105,6 +119,78 @@ void schedule(){
 
 }
 
+void swap(tcb * curr1, tcb * curr2) {
+	tcb * c1_left = curr1->left;
+	tcb * c1_right = curr1->right;
+	if (c1_right != NULL) {
+		if (c1_right->tid==curr2->tid) {
+			curr1->left = curr2;
+			curr1->right = curr2->right;
+			curr2->left = c1_left;
+			curr2->right = curr1;
+		
+			if (curr2->left != NULL) {
+				(curr2->left)->right = curr2;
+			}
+			if (curr1->right != NULL) {
+				(curr1->right)->left = curr1;
+			}
+		}
+	}
+	else if (c1_left != NULL) {
+		if (c1_left->tid==curr2->tid) {
+			curr1->right = curr2;
+			curr1->left = curr2->left;
+			curr2->right = curr1->right;
+			curr2->left = curr1;
+		
+			if (curr2->right != NULL) {
+				(curr2->right)->left = curr2;
+			}
+			if (curr1->left != NULL) {
+				(curr1->left)->right = curr1;
+			}
+		}
+	}
+	else {
+		curr1->left = curr2->left;
+		curr1->right = curr2->right;
+		curr2->left = c1_left;
+		curr2->right = c1_right;
+
+		if (curr1->left != NULL) {
+			(curr1->left)->right = curr1;
+		}
+		if (curr1->right != NULL) {
+			(curr1->right)->left = curr1;
+		}
+		if (curr2->left != NULL) {
+			(curr2->left)->right = curr2;
+		}
+		if (curr2->right != NULL) {
+			(curr2->right)->left = curr2;
+		}
+	}
+
+	int curr1_front = 0;
+	int curr2_front = 0;
+	if(scheduler[curr1->priority]->front == curr1) {
+		curr1_front = 1;
+	}
+	if(scheduler[curr2->priority]->front == curr2) {
+		curr2_front = 1;
+	}
+	if(curr1_front) {
+		scheduler[curr1->priority]->front = curr2;
+	}
+	if(curr2_front) {
+		scheduler[curr2->priority]->front = curr1;
+	}
+	int swap_priority = curr1->priority;
+	curr1->priority = curr2->priority;
+	curr2->priority = swap_priority;
+}
+
 ucontext_t * init_tail(){
 	ucontext_t * tailFunc=malloc(sizeof(ucontext_t));
 	getcontext(tailFunc);
@@ -141,6 +227,8 @@ tcb * init_tcb(my_pthread_t * tid, ws * currArgs, void * func){
 	curr->args=currArgs;
 	curr->func=func;
 	curr->num_drops=0;
+	curr->mutex_id=NULL;
+	curr->wait_skips=0;
 	if (curr->func != NULL) {
 		(curr->args)->tcb=curr;
 		curr->context=init_context(curr->func, curr->args);
@@ -187,6 +275,25 @@ void * wrapper(ws * currArgs) {
 void drop(tcb * curr){
 	removeThread(curr);
 	curr->num_drops++;
+	if( curr->priority==0 && curr->num_drops >= 25 && curr->num_drops <= 40) {
+		curr->priority = 1;
+		//printf("dropped to 1\n");
+	}
+	else if ( curr->priority==1 && curr->num_drops > 40 && curr->num_drops <= 60) {
+		curr->priority = 2;
+		//printf("dropped to 2\n");
+	}
+	else if ( curr->priority==2 && curr->num_drops > 60 && curr->num_drops <= 80) {
+		curr->priority = 1;
+		//printf("up to 1\n");
+	}
+	else if ( curr->priority==1 && curr->num_drops > 80) {
+		curr->priority = 0;
+		//printf("up to 0\n");
+	}
+	//if(curr->priority<(numLevels-1)){
+	//	curr->priority++;
+	//}
 	enqueue(curr,curr->priority);
 }
 
@@ -264,6 +371,11 @@ void init(){
 
 /* create a new thread */
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
+	if (!been_inited) {
+		init();
+		been_inited=1;
+	}
+
 	sigprocmask(SIG_SETMASK, &blockSet,NULL);
 	//ucontext_t * my_context = init_context(function,  arg);
 	//setcontext(&my_context);
@@ -288,6 +400,11 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 
 /* give CPU pocession to other user level threads voluntarily */
 int my_pthread_yield() {
+
+	if (!been_inited) {
+		init();
+		been_inited=1;
+	}
 	cyclesLeft=0;
 	sig_handler();
 	return 0;
@@ -295,6 +412,10 @@ int my_pthread_yield() {
 
 /* terminate a thread */
 void my_pthread_exit(void *value_ptr) {
+	if (!been_inited) {
+		init();
+		been_inited=1;
+	}
 	sigprocmask(SIG_SETMASK, &blockSet,NULL);
 	printf("Exiting\n");
 
@@ -323,6 +444,10 @@ void my_pthread_exit(void *value_ptr) {
 
 /* wait for thread termination */
 int my_pthread_join(my_pthread_t thread, void **value_ptr) {
+	if (!been_inited) {
+		init();
+		been_inited=1;
+	}
 	sigprocmask(SIG_SETMASK, &blockSet,NULL);
 	tcb * target= find(thread);
 	if(target==NULL||target->state==TERMINATED) {
@@ -343,6 +468,10 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 
 /* initial the mutex lock */
 int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr) {
+	if (!been_inited) {
+		init();
+		been_inited=1;
+	}
 	sigprocmask(SIG_SETMASK, &blockSet,NULL);
 	mutex->id = mutexPool->size;
 	mutex->currT = NULL;
@@ -371,6 +500,10 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 
 /* aquire the mutex lock */
 int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
+	if (!been_inited) {
+		init();
+		been_inited=1;
+	}
 	sigprocmask(SIG_SETMASK, &blockSet,NULL);
 	if(mutex->currT==NULL){
 		mutex->currT=currThread;
@@ -380,6 +513,7 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
 		wn * ptr=mutex->waiting;
 		wn * waitNode=init_wn(currThread);
 		currThread->state=WAITLOCK;
+				currThread->mutex_id = mutex;
 		if(ptr==NULL){
 			mutex->waiting=waitNode;
 		}else{
@@ -397,6 +531,10 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
 
 /* release the mutex lock */
 int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
+	if (!been_inited) {
+		init();
+		been_inited=1;
+	}
 	//printf("ulock status %d\n", currThread->state);
 	sigprocmask(SIG_SETMASK, &blockSet,NULL);
 	if(mutex->currT==NULL||mutex->currT->tid!=currThread->tid){
@@ -406,6 +544,8 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 		return -1;
 	}
 	wn * ptr= mutex->waiting;
+			currThread->mutex_id = NULL;
+			currThread->wait_skips = 0;
 	((mutex->currT))->state=READY;
 	if(ptr!=NULL){
 		((ptr->curr))->state=LOCKING;
@@ -422,6 +562,10 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 /* destroy the mutex */
 //NEED TO TEST
 int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
+	if (!been_inited) {
+		init();
+		been_inited=1;
+	}
 	sigprocmask(SIG_SETMASK, &blockSet,NULL);
 	my_pthread_mutex_t* ptr = mutexPool->front;
 	my_pthread_mutex_t * prev=NULL;
@@ -429,6 +573,13 @@ int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 			my_pthread_yield();
 			return -1;
 	}
+
+			while(mutex->waiting!=NULL){
+				((tcb *)(((wn *)(mutex->waiting))->curr))->state=READY;
+				((tcb *)(((wn *)(mutex->waiting))->curr))->mutex_id=NULL;
+				((tcb *)(((wn *)(mutex->waiting))->curr))->wait_skips=0;
+				mutex->waiting=((wn *)(mutex->waiting))->next;
+			}
 	/*while(mutex->waiting!=NULL){
 		((tcb *)(((wn *)(mutex->waiting))->curr))->state=READY;
 		mutex->waiting=((wn *)(mutex->waiting))->next;

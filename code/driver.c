@@ -32,8 +32,30 @@ int func2(int x){
 	pthread_mutex_unlock(&mutex);
 	return x+6;
 }
+
+void func3() {
+	pthread_mutex_lock(&mutex);
+	while(1) {
+		//printf("in loop\n");
+	}
+	pthread_mutex_unlock(&mutex);
+}
+
+
 int main(int argc, char ** argv){
-	init();
+	pthread_mutex_init(&mutex, NULL);
+	int k=3;
+	my_pthread_t arr[2];
+	pthread_create(&(arr[0]),NULL,(void*)&func3,NULL);
+	pthread_create(&(arr[1]),NULL,(void*)&func2,NULL);
+	int i = 0;
+	for (i=0;i<2;i++) {
+		int * res;
+		pthread_join(arr[i],&res);
+		printf("RESULT FROM THREAD: %d\n",*res);
+	}	
+
+	/*
 	pthread_mutex_init(&mutex, NULL);
 	int k;
 	my_pthread_t arr[5];
@@ -51,4 +73,5 @@ int main(int argc, char ** argv){
 		pthread_join(arr[k],&res);
 		printf("Result from thread: %d\n",*res);
 	}
+	*/
 }
