@@ -250,7 +250,7 @@ wn * init_wn(tcb * curr){
 
 tcb * find(my_pthread_t tid){
 	int i;
-	for(i=0;i<numLevels;i++){
+	for(i=0;i<=numLevels;i++){
 		tcb * ptr=scheduler[i]->front; //fix this to take states and multilevel priority queue
 		while(ptr!=NULL){
 			if(*(ptr->tid)==tid){
@@ -450,6 +450,9 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	}
 	sigprocmask(SIG_SETMASK, &blockSet,NULL);
 	tcb * target= find(thread);
+	if(target!=NULL&&value_ptr!=NULL){
+		*value_ptr=&(target->res);
+	}
 	if(target==NULL||target->state==TERMINATED) {
 		sigprocmask(SIG_UNBLOCK, &blockSet,NULL);
 		my_pthread_yield();
@@ -459,9 +462,6 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	wn * waitNode=init_wn(currThread);
 	waitNode->next=target->waiting;
 	target->waiting=waitNode;
-	if(value_ptr!=NULL){
-		*value_ptr=&(target->res);
-	}
 	my_pthread_yield();
 	return 0;
 };
