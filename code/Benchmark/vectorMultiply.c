@@ -11,7 +11,7 @@
 
 #define DEFAULT_THREAD_NUM 2
 
-#define VECTOR_SIZE 3000000
+#define VECTOR_SIZE 3000
 
 pthread_mutex_t   mutex;
 
