@@ -74,7 +74,7 @@ void schedule(){
 			__atomic_clear(&mode,0);	
 			return;
 		}
-		printf("Scheduling\n");
+		//printf("Scheduling\n");
 		isHandling=1;
 		tcb * next_tcb;
 		int i=0;
@@ -523,11 +523,16 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
 		been_inited=1;
 	}
 	__atomic_test_and_set(&mode,0);
+	if(mutex==NULL||mutex->id==NULL){
+		__atomic_clear(&mode,0);
+		return -1;
+	}
+	
 	if(mutex->currT==NULL){
 		mutex->currT=currThread;
 		currThread->state=LOCKING;
 	}else{
-		printf("Gotta wait\n");
+		//printf("Gotta wait\n");
 		wn * ptr=mutex->waiting;
 		wn * waitNode=init_wn(currThread);
 		currThread->state=WAITLOCK;
@@ -555,7 +560,7 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 	}
 	//printf("ulock status %d\n", currThread->state);
 	__atomic_test_and_set(&mode,0);
-	if(mutex->currT==NULL||mutex->currT->tid!=currThread->tid){
+	if(mutex==NULL||mutex->id==NULL||mutex->currT==NULL||mutex->currT->tid!=currThread->tid){
 		//printf("Can't do that\n");
 		//my_pthread_yield();
 		__atomic_clear(&mode,0);
@@ -611,6 +616,9 @@ int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 				mutexPool->front=NULL;
 			}
 			//free(mutex);
+			
+			mutex->id=NULL;
+				
 			my_pthread_yield();
 			return 0;
 		}

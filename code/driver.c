@@ -18,7 +18,7 @@ int func2(int x){
 	int y=0;
 	int i=1;
 	pthread_mutex_lock(&mutex);
-	sleep(2);
+	//sleep(2);
 	
 	printf("X Param %d\n",x);
 	pthread_mutex_unlock(&mutex);
@@ -43,7 +43,7 @@ int main(int argc, char ** argv){
 		//my_pthread_t  thread=arr[k];
 		int * i=12;
 		int w=k;
-		pthread_create(&(arr[k]),NULL,(void*)&func3,w);
+		pthread_create(&(arr[k]),NULL,(void*)&func2,w);
 	}
 	pthread_mutex_unlock(&mutex);
 	printf("Unlocking mutex\n");
@@ -52,6 +52,10 @@ int main(int argc, char ** argv){
 		pthread_join(arr[k],&res);
 		printf("Result from thread: %d\n",*res);
 	}
-	printf("We done\n");
+	int res;
+	res=pthread_mutex_destroy(&mutex);
+	printf("Res destroy %d\n",res);
+	res=pthread_mutex_destroy(&mutex);
+	printf("Res destroy %d\n",res);
 	
 }
