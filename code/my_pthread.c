@@ -60,13 +60,21 @@ void checkSigHandler(){
 }
 
 void schedule(){
+
 	if(!isHandling){
+	
+
+		/*if(next_tcb->state==WAITRES){
+		  printf("SHEET%d\n", next_tcb->state);
+		  }*/
+		//while(setitimer(ITIMER_VIRTUAL,&timer,NULL)==-1);
+
 		if(cyclesLeft!=0){
 			cyclesLeft--;
 			__atomic_clear(&mode,0);	
 			return;
 		}
-		//printf("Scheduling\n");
+		printf("Scheduling\n");
 		isHandling=1;
 		tcb * next_tcb;
 		int i=0;
@@ -93,14 +101,10 @@ void schedule(){
 				break;
 			}
 		}
-
-		/*if(next_tcb->state==WAITRES){
-		  printf("SHEET%d\n", next_tcb->state);
-		  }*/
-		//while(setitimer(ITIMER_VIRTUAL,&timer,NULL)==-1);
 		if(next_tcb!=NULL&&(next_tcb->state==READY||next_tcb->state==LOCKING||next_tcb->state==RUNNING)){
+			printf("Thread id: %d State of entering thread %d\n",*(next_tcb->tid), next_tcb->state);
+			fflush(stdout);
 			ucontext_t * next=next_tcb->context;
-			//printf("Swapping Context\n");
 			cyclesLeft=next_tcb->priority;
 			if(currThread!=NULL){
 				ucontext_t * prevContext=currThread->context;
@@ -122,9 +126,9 @@ void schedule(){
 			__atomic_clear(&mode,0);	
 
 		}
+	}else{
+		__atomic_clear(&mode,0);	
 	}
-	__atomic_clear(&mode,0);	
-
 }
 
 void swap(tcb * curr1, tcb * curr2) {
@@ -136,7 +140,7 @@ void swap(tcb * curr1, tcb * curr2) {
 			curr1->right = curr2->right;
 			curr2->left = c1_left;
 			curr2->right = curr1;
-		
+
 			if (curr2->left != NULL) {
 				(curr2->left)->right = curr2;
 			}
@@ -151,7 +155,7 @@ void swap(tcb * curr1, tcb * curr2) {
 			curr1->left = curr2->left;
 			curr2->right = curr1->right;
 			curr2->left = curr1;
-		
+
 			if (curr2->right != NULL) {
 				(curr2->right)->left = curr2;
 			}
@@ -338,7 +342,7 @@ void removeThread(tcb * curr){
 }
 
 void init(){
-	printf("Vro\n");
+	printf("Initializing Structs\n");
 	//Init scheduler
 	scheduler=(lq **) malloc(sizeof(lq *)*(numLevels+1));
 	int i;
@@ -361,8 +365,8 @@ void init(){
 
 	//init alarm
 	while(signal(SIGVTALRM,(void *)&checkSigHandler)==SIG_ERR);
-	timer.it_value.tv_sec=25/1000;
-	timer.it_value.tv_usec=250;
+	timer.it_value.tv_sec=0;
+	timer.it_value.tv_usec=250000;
 	timer.it_interval=timer.it_value;
 	while(setitimer(ITIMER_VIRTUAL,&timer,NULL)==-1);
 
@@ -371,7 +375,7 @@ void init(){
 	sigemptyset(&blockSet);
 	sigaddset(&blockSet, SIGVTALRM);
 
-	printf("Done init\n");
+	printf("Done initializing\n");
 	//while(1==1);
 }
 
@@ -384,7 +388,7 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 		init();
 		been_inited=1;
 	}
-	
+
 	//ucontext_t * my_context = init_context(function,  arg);
 	//setcontext(&my_context);
 	ws * currArgs = (ws *) malloc(sizeof(ws));
@@ -521,7 +525,7 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
 		wn * ptr=mutex->waiting;
 		wn * waitNode=init_wn(currThread);
 		currThread->state=WAITLOCK;
-				currThread->mutex_id = mutex;
+		currThread->mutex_id = mutex;
 		if(ptr==NULL){
 			mutex->waiting=waitNode;
 		}else{
@@ -552,8 +556,8 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 		return -1;
 	}
 	wn * ptr= mutex->waiting;
-			currThread->mutex_id = NULL;
-			currThread->wait_skips = 0;
+	currThread->mutex_id = NULL;
+	currThread->wait_skips = 0;
 	((mutex->currT))->state=READY;
 	if(ptr!=NULL){
 		((ptr->curr))->state=LOCKING;
@@ -575,23 +579,24 @@ int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 		been_inited=1;
 	}
 	__atomic_test_and_set(&mode,0);
+	printf("Destroying mutex: %d\n",*mutex);
 	my_pthread_mutex_t* ptr = mutexPool->front;
 	my_pthread_mutex_t * prev=NULL;
 	if(mutex->currT!=NULL){
-			my_pthread_yield();
-			return -1;
+		my_pthread_yield();
+		return -1;
 	}
 
-			while(mutex->waiting!=NULL){
-				((tcb *)(((wn *)(mutex->waiting))->curr))->state=READY;
-				((tcb *)(((wn *)(mutex->waiting))->curr))->mutex_id=NULL;
-				((tcb *)(((wn *)(mutex->waiting))->curr))->wait_skips=0;
-				mutex->waiting=((wn *)(mutex->waiting))->next;
-			}
-	/*while(mutex->waiting!=NULL){
+	while(mutex->waiting!=NULL){
 		((tcb *)(((wn *)(mutex->waiting))->curr))->state=READY;
+		((tcb *)(((wn *)(mutex->waiting))->curr))->mutex_id=NULL;
+		((tcb *)(((wn *)(mutex->waiting))->curr))->wait_skips=0;
 		mutex->waiting=((wn *)(mutex->waiting))->next;
-	}*/
+	}
+	/*while(mutex->waiting!=NULL){
+	  ((tcb *)(((wn *)(mutex->waiting))->curr))->state=READY;
+	  mutex->waiting=((wn *)(mutex->waiting))->next;
+	  }*/
 	while(ptr!= NULL) {
 		if(ptr->id==mutex->id){
 			if(prev!=NULL){
@@ -599,7 +604,7 @@ int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 			}else{
 				mutexPool->front=NULL;
 			}
-			free(mutex);
+			//free(mutex);
 			my_pthread_yield();
 			return 0;
 		}
