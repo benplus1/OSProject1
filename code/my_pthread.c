@@ -125,7 +125,8 @@ void schedule(){
 			//printf("No new threads to run");
 			isHandling=0;
 			printf("Deadlock\n");
-			while(1==1);
+			//while(1==1);
+			signal_handler();
 			__atomic_clear(&mode,0);	
 
 		}
