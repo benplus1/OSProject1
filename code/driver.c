@@ -25,10 +25,10 @@ int func2(int x){
 	return x+6;
 }
 
-void func3() {
+void func3(int x) {
 	pthread_mutex_lock(&mutex);
 	while(1) {
-		//printf("in loop\n");
+		//printf("in loop %d\n", x);
 	}
 	pthread_mutex_unlock(&mutex);
 }
@@ -43,7 +43,7 @@ int main(int argc, char ** argv){
 		//my_pthread_t  thread=arr[k];
 		int * i=12;
 		int w=k;
-		pthread_create(&(arr[k]),NULL,(void*)&func2,w);
+		pthread_create(&(arr[k]),NULL,(void*)&func3,w);
 	}
 	pthread_mutex_unlock(&mutex);
 	printf("Unlocking mutex\n");

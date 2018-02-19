@@ -85,6 +85,9 @@ void schedule(){
 						printf("inverting priority: %d\n", num_inverted);
 						num_inverted++;
 						next_tcb=to_be_swapped;
+						if (next_tcb->state==READY||next_tcb->state==LOCKING||next_tcb->state==RUNNING) {
+							break;
+						}
 					}
 				}
 				next_tcb=next_tcb->right;
@@ -130,8 +133,10 @@ void schedule(){
 void swap(tcb * curr1, tcb * curr2) {
 	tcb * c1_left = curr1->left;
 	tcb * c1_right = curr1->right;
+	int enteredSwap = 0;
 	if (c1_right != NULL) {
 		if (c1_right->tid==curr2->tid) {
+			enteredSwap = 1;
 			curr1->left = curr2;
 			curr1->right = curr2->right;
 			curr2->left = c1_left;
@@ -145,13 +150,14 @@ void swap(tcb * curr1, tcb * curr2) {
 			}
 		}
 	}
-	else if (c1_left != NULL) {
-		if (c1_left->tid==curr2->tid) {
+	if (c1_left != NULL) {
+		if ((c1_left->tid==curr2->tid) && !enteredSwap) {
+			enteredSwap = 1;
 			curr1->right = curr2;
 			curr1->left = curr2->left;
-			curr2->right = curr1->right;
+			curr2->right = c1_right;
 			curr2->left = curr1;
-		
+				
 			if (curr2->right != NULL) {
 				(curr2->right)->left = curr2;
 			}
@@ -160,7 +166,7 @@ void swap(tcb * curr1, tcb * curr2) {
 			}
 		}
 	}
-	else {
+	if (!enteredSwap) {
 		curr1->left = curr2->left;
 		curr1->right = curr2->right;
 		curr2->left = c1_left;
@@ -285,19 +291,19 @@ void drop(tcb * curr){
 	curr->num_drops++;
 	if( curr->priority==0 && curr->num_drops >= 25 && curr->num_drops <= 40) {
 		curr->priority = 1;
-		//printf("dropped to 1\n");
+		printf("dropped to 1\n");
 	}
 	else if ( curr->priority==1 && curr->num_drops > 40 && curr->num_drops <= 60) {
 		curr->priority = 2;
-		//printf("dropped to 2\n");
+		printf("dropped to 2\n");
 	}
 	else if ( curr->priority==2 && curr->num_drops > 60 && curr->num_drops <= 80) {
 		curr->priority = 1;
-		//printf("up to 1\n");
+		printf("up to 1\n");
 	}
 	else if ( curr->priority==1 && curr->num_drops > 80) {
 		curr->priority = 0;
-		//printf("up to 0\n");
+		printf("up to 0\n");
 	}
 	//if(curr->priority<(numLevels-1)){
 	//	curr->priority++;
