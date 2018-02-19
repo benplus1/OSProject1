@@ -15,9 +15,13 @@ int test=0;
 int func2(int num){
   int i;
   for(i = 0; i<num; i++){
+    int z;
+    for (z = 0; z < 50000000*num; z++){}
     printf("currently %d is doing %d\n",num,i);
-    for (size_t z = 0; z < 50000*num; z++)
+
+
   }
+  printf("%d is done\n",num);
   return i;
 }
 
