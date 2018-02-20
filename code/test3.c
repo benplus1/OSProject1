@@ -27,7 +27,6 @@ int func2(int num){
 
 int main(int argc, char ** argv){
 
-    int j;
     my_pthread_t  thread1;
     my_pthread_t  thread2;
     my_pthread_t  thread3;
@@ -46,7 +45,7 @@ int main(int argc, char ** argv){
     my_pthread_t  thread16;
     my_pthread_t  thread17;
     my_pthread_t  thread18;
-    //int * i;
+
     pthread_create(&thread1,NULL,(void*)&func2,1);
     pthread_create(&thread2,NULL,(void*)&func2,2);
     pthread_create(&thread3,NULL,(void*)&func2,3);
@@ -60,33 +59,23 @@ int main(int argc, char ** argv){
     pthread_create(&thread11,NULL,(void*)&func2,11);
     pthread_create(&thread12,NULL,(void*)&func2,12);
     pthread_create(&thread13,NULL,(void*)&func2,13);
-    pthread_create(&thread14,NULL,(void*)&func2,14);
-    pthread_create(&thread15,NULL,(void*)&func2,15);
-    pthread_create(&thread16,NULL,(void*)&func2,16);
-    pthread_create(&thread17,NULL,(void*)&func2,17);
-    pthread_create(&thread18,NULL,(void*)&func2,18);
-    //my_pthread_join(thread1, NULL);
-    // my_pthread_join(thread2, NULL);
-    // my_pthread_join(thread3, NULL);
-    // my_pthread_join(thread4, NULL);
-    // my_pthread_join(thread5, NULL);
-    // my_pthread_join(thread6, NULL);
-    // my_pthread_join(thread7, NULL);
-    // my_pthread_join(thread8, NULL);
-    // my_pthread_join(thread9, NULL);
-    // my_pthread_join(thread10,NULL);
-    // my_pthread_join(thread11,NULL);
-    // my_pthread_join(thread12,NULL);
-    // my_pthread_join(thread13,NULL);
-    // my_pthread_join(thread14,NULL);
-    // my_pthread_join(thread15,NULL);
-    // my_pthread_join(thread16,NULL);
-    // my_pthread_join(thread17,NULL);
-    // my_pthread_join(thread18,NULL);
-    //j = *i;
-    //printf("%d\n",j);
-    while(1==1);
-    printf("HELLO THERE!\n");
+    pthread_join(thread1, NULL);
+    pthread_join(thread2, NULL);
+    pthread_join(thread3, NULL);
+    pthread_join(thread4, NULL);
+    pthread_join(thread5, NULL);
+    pthread_join(thread6, NULL);
+    pthread_join(thread7, NULL);
+    pthread_join(thread8, NULL);
+    pthread_join(thread9, NULL);
+    pthread_join(thread10, NULL);
+    pthread_join(thread11, NULL);
+    pthread_join(thread12, NULL);
+    pthread_join(thread13,NULL);
 
+
+
+    printf("HELLO THERE!\n");
+    //while(1==1);
 
 }

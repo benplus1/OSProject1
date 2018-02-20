@@ -62,7 +62,7 @@ void checkSigHandler(){
 void schedule(){
 
 	if(!isHandling){
-	
+
 
 		/*if(next_tcb->state==WAITRES){
 		  printf("SHEET%d\n", next_tcb->state);
@@ -71,7 +71,7 @@ void schedule(){
 
 		if(cyclesLeft!=0){
 			cyclesLeft--;
-			__atomic_clear(&mode,0);	
+			__atomic_clear(&mode,0);
 			return;
 		}
 		//printf("Scheduling\n");
@@ -90,7 +90,7 @@ void schedule(){
 						tcb * to_be_swapped = (next_tcb->mutex_id)->currT;
 						swap(next_tcb, to_be_swapped);
 						//next_tcb->wait_skips = 0;
-						printf("inverting priority: %d\n", num_inverted);
+						//printf("inverting priority: %d\n", num_inverted);
 						num_inverted++;
 						next_tcb=to_be_swapped;
 						if (next_tcb->state==READY||next_tcb->state==LOCKING||next_tcb->state==RUNNING) {
@@ -105,7 +105,7 @@ void schedule(){
 			}
 		}
 		if(next_tcb!=NULL&&(next_tcb->state==READY||next_tcb->state==LOCKING||next_tcb->state==RUNNING)){
-			printf("Thread id: %d State of entering thread %d\n",*(next_tcb->tid), next_tcb->state);
+			//printf("Thread id: %d State of entering thread %d\n",*(next_tcb->tid), next_tcb->state);
 			fflush(stdout);
 			ucontext_t * next=next_tcb->context;
 			cyclesLeft=next_tcb->priority;
@@ -113,25 +113,25 @@ void schedule(){
 				ucontext_t * prevContext=currThread->context;
 				currThread=next_tcb;
 				isHandling=0;
-				__atomic_clear(&mode,0);	
+				__atomic_clear(&mode,0);
 				while(swapcontext(prevContext, next )<0);
 			}else{
 				isHandling=0;
 				currThread=next_tcb;
-				__atomic_clear(&mode,0);	
+				__atomic_clear(&mode,0);
 				while(setcontext(next)<0);
 			}
 		}else{
 			//printf("No new threads to run");
 			isHandling=0;
-			printf("Deadlock\n");
+			//printf("Deadlock\n");
 			//while(1==1);
 			signal_handler();
-			__atomic_clear(&mode,0);	
+			__atomic_clear(&mode,0);
 
 		}
 	}else{
-		__atomic_clear(&mode,0);	
+		__atomic_clear(&mode,0);
 	}
 }
 
@@ -296,19 +296,19 @@ void drop(tcb * curr){
 	curr->num_drops++;
 	if( curr->priority==0 && curr->num_drops >= 25 && curr->num_drops <= 40) {
 		curr->priority = 1;
-		printf("dropped to 1\n");
+		//printf("dropped to 1\n");
 	}
 	else if ( curr->priority==1 && curr->num_drops > 40 && curr->num_drops <= 60) {
 		curr->priority = 2;
-		printf("dropped to 2\n");
+		//printf("dropped to 2\n");
 	}
 	else if ( curr->priority==2 && curr->num_drops > 60 && curr->num_drops <= 80) {
 		curr->priority = 1;
-		printf("up to 1\n");
+		//printf("up to 1\n");
 	}
 	else if ( curr->priority==1 && curr->num_drops > 80) {
 		curr->priority = 0;
-		printf("up to 0\n");
+		//printf("up to 0\n");
 	}
 	//if(curr->priority<(numLevels-1)){
 	//	curr->priority++;
@@ -349,7 +349,7 @@ void removeThread(tcb * curr){
 }
 
 void init(){
-	printf("Initializing Structs\n");
+	//printf("Initializing Structs\n");
 	//Init scheduler
 	scheduler=(lq **) malloc(sizeof(lq *)*(numLevels+1));
 	int i;
@@ -382,7 +382,7 @@ void init(){
 	sigemptyset(&blockSet);
 	sigaddset(&blockSet, SIGVTALRM);
 
-	printf("Done initializing\n");
+	//printf("Done initializing\n");
 	//while(1==1);
 }
 
@@ -411,7 +411,7 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 		didStart=1;
 		schedule();
 	}else{
-		__atomic_clear(&mode,0);	
+		__atomic_clear(&mode,0);
 
 	}
 	return 0;
@@ -437,7 +437,7 @@ void my_pthread_exit(void *value_ptr) {
 		been_inited=1;
 	}
 	__atomic_test_and_set(&mode,0);
-	printf("Exiting\n");
+	//printf("Exiting\n");
 
 
 	currThread->state=TERMINATED;
@@ -528,7 +528,7 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
 		__atomic_clear(&mode,0);
 		return -1;
 	}
-	
+
 	if(mutex->currT==NULL){
 		mutex->currT=currThread;
 		currThread->state=LOCKING;
@@ -591,7 +591,7 @@ int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 		been_inited=1;
 	}
 	__atomic_test_and_set(&mode,0);
-	printf("Destroying mutex: %d\n",*mutex);
+	//printf("Destroying mutex: %d\n",*mutex);
 	my_pthread_mutex_t* ptr = mutexPool->front;
 	my_pthread_mutex_t * prev=NULL;
 	if(mutex->currT!=NULL){
@@ -617,9 +617,9 @@ int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 				mutexPool->front=NULL;
 			}
 			//free(mutex);
-			
+
 			mutex->id=NULL;
-				
+
 			my_pthread_yield();
 			return 0;
 		}

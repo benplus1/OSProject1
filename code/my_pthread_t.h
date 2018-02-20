@@ -4,11 +4,11 @@
 
 // name:
 // username of iLab:
-// iLab Server: 
+// iLab Server:
 #ifndef MY_PTHREAD_T_H
 #define MY_PTHREAD_T_H
 #define _GNU_SOURCE
-#define pthread_create my_pthread_create 
+#define pthread_create my_pthread_create
 #define pthread_yield my_pthread_yield
 #define pthread_exit my_pthread_exit
 #define pthread_join my_pthread_join
