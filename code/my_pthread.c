@@ -40,6 +40,12 @@ int memSize=4096;
 tcb * currThread=NULL;
 
 
+tcb * getCurrThread(){
+	if(!been_inited){
+		init();
+	}
+	return currThread;
+}
 
 
 void signal_handler(){
@@ -248,6 +254,8 @@ tcb * init_tcb(my_pthread_t * tid, ws * currArgs, void * func){
 	curr->num_drops=0;
 	curr->mutex_id=NULL;
 	curr->wait_skips=0;
+	
+	curr->addr_list=(page_entry **)malloc(1000*sizeof(page_entry *));
 	if (curr->func != NULL) {
 		(curr->args)->tcb=curr;
 		curr->context=init_context(curr->func, curr->args);
@@ -381,7 +389,8 @@ void init(){
 	sigemptyset(&emptySet);
 	sigemptyset(&blockSet);
 	sigaddset(&blockSet, SIGVTALRM);
-
+	
+	been_inited=1;
 	//printf("Done initializing\n");
 	//while(1==1);
 }

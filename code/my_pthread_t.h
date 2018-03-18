@@ -24,6 +24,9 @@
 #include <stdlib.h>
 #include <ucontext.h>
 #include <sys/time.h>
+
+//#include "OSProject2/my_malloc.h"
+
 typedef uint my_pthread_t;
 
 typedef struct wrapperstruct {
@@ -70,6 +73,10 @@ typedef struct threadControlBlock {
 	void ** res;
 	struct wrapperstruct * args;
 	void * func;
+
+	page_entry ** addr_list;
+	int page_count;
+
 } tcb;
 
 // Feel free to add your own auxiliary data structures
