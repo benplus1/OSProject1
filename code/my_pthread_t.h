@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <ucontext.h>
 #include <sys/time.h>
+#include "OSProject2/my_malloc.h"
 
 //#include "OSProject2/my_malloc.h"
 
