@@ -6,7 +6,9 @@
 // username of iLab: hkc33, ad1005, bty10
 // iLab Server: adapter
 
+
 #include "my_pthread_t.h"
+#include "OSProject2/my_malloc.c"
 
 const int RUNNING=0;
 const int WAITRES=1;
@@ -49,7 +51,7 @@ tcb * getCurrThread(){
 
 
 void signal_handler(){
-	//printf("Caught signal\n");
+	printf("Caught signal\n");
 	drop(currThread);
 	schedule();
 }
@@ -69,7 +71,7 @@ void schedule(){
 
 	if(!isHandling){
 
-
+		printf("Scheduling\n");
 		/*if(next_tcb->state==WAITRES){
 		  printf("SHEET%d\n", next_tcb->state);
 		  }*/
@@ -116,18 +118,20 @@ void schedule(){
 			ucontext_t * next=next_tcb->context;
 			cyclesLeft=next_tcb->priority;
 			if(currThread!=NULL){
+				unset_pages(currThread);
 				ucontext_t * prevContext=currThread->context;
 				currThread=next_tcb;
 				isHandling=0;
+				set_pages(currThread);
 				__atomic_clear(&mode,0);
 				while(swapcontext(prevContext, next )<0);
 			}else{
 				isHandling=0;
 				currThread=next_tcb;
+				set_pages(currThread);
 				__atomic_clear(&mode,0);
 				while(setcontext(next)<0);
 			}
-			set_pages();
 		}else{
 			//printf("No new threads to run");
 			isHandling=0;
@@ -382,15 +386,15 @@ void init(){
 	//init alarm
 	while(signal(SIGVTALRM,(void *)&checkSigHandler)==SIG_ERR);
 	timer.it_value.tv_sec=0;
-	timer.it_value.tv_usec=250000;
+	timer.it_value.tv_usec=250;
 	timer.it_interval=timer.it_value;
 	while(setitimer(ITIMER_VIRTUAL,&timer,NULL)==-1);
 
 	//sigprocmask( SIGVTALRM,&set,NULL);
-	sigemptyset(&emptySet);
+	/*sigemptyset(&emptySet);
 	sigemptyset(&blockSet);
 	sigaddset(&blockSet, SIGVTALRM);
-	
+	*/
 	been_inited=1;
 	//printf("Done initializing\n");
 	//while(1==1);

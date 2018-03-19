@@ -82,6 +82,8 @@ typedef struct threadControlBlock {
 
 // Feel free to add your own auxiliary data structures
 
+extern tcb * getCurrThread();
+
 
 /* Function Declarations: */
 
