@@ -446,6 +446,7 @@ int my_pthread_yield() {
 
 /* terminate a thread */
 void my_pthread_exit(void *value_ptr) {
+	unprotect_sys();
 	if (!been_inited) {
 		init();
 		been_inited=1;
@@ -456,6 +457,7 @@ void my_pthread_exit(void *value_ptr) {
 
 	currThread->state=TERMINATED;
 	removeThread(currThread);
+	free_pages(currThread);
 	//my_pthread_yield();
 
 	//Update waiting threads
