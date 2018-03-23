@@ -26,7 +26,11 @@
 #include <sys/time.h>
 #include "OSProject2/my_malloc.h"
 
+
+
+
 //#include "OSProject2/my_malloc.h"
+extern int mode=0;
 
 typedef uint my_pthread_t;
 

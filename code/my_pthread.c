@@ -9,6 +9,9 @@
 
 #include "my_pthread_t.h"
 #include "OSProject2/my_malloc.c"
+#define  malloc(x) myallocate(x,LIBRARYREQ)
+#define  free(x) mydeallocate(x,LIBRARYREQ)
+
 
 const int RUNNING=0;
 const int WAITRES=1;
@@ -22,7 +25,7 @@ mutexP * mutexPool;
 lq ** scheduler;
 
 int enter_mode=0;
-int mode=0;
+//int mode=0;
 sigset_t blockSet;
 sigset_t emptySet;
 
@@ -43,15 +46,16 @@ tcb * currThread=NULL;
 
 
 tcb * getCurrThread(){
-	if(!been_inited){
+	/*if(!been_inited){
 		init();
-	}
+	}*/
 	return currThread;
 }
 
 
 void signal_handler(){
 	printf("Caught signal\n");
+	unprotect_sys();
 	drop(currThread);
 	schedule();
 }
@@ -69,8 +73,9 @@ void checkSigHandler(){
 
 void schedule(){
 
+	unprotect_sys();
 	if(!isHandling){
-
+		
 		printf("Scheduling\n");
 		/*if(next_tcb->state==WAITRES){
 		  printf("SHEET%d\n", next_tcb->state);
@@ -79,6 +84,7 @@ void schedule(){
 
 		if(cyclesLeft!=0){
 			cyclesLeft--;
+			protect_sys();
 			__atomic_clear(&mode,0);
 			return;
 		}
@@ -122,13 +128,15 @@ void schedule(){
 				ucontext_t * prevContext=currThread->context;
 				currThread=next_tcb;
 				isHandling=0;
-				set_pages(currThread);
+				//set_pages(currThread);
+				//protect_sys();
 				__atomic_clear(&mode,0);
 				while(swapcontext(prevContext, next )<0);
 			}else{
 				isHandling=0;
 				currThread=next_tcb;
-				set_pages(currThread);
+				//set_pages(currThread);
+				//protect_sys();
 				__atomic_clear(&mode,0);
 				while(setcontext(next)<0);
 			}
@@ -142,6 +150,7 @@ void schedule(){
 
 		}
 	}else{
+		protect_sys();
 		__atomic_clear(&mode,0);
 	}
 }
@@ -364,7 +373,8 @@ void removeThread(tcb * curr){
 void init(){
 	//printf("Initializing Structs\n");
 	//Init scheduler
-	scheduler=(lq **) malloc(sizeof(lq *)*(numLevels+1));
+	
+	scheduler=(lq **) myallocate(sizeof(lq *)*(numLevels+1),0);
 	int i;
 	for(i=0;i<numLevels+1;i++){
 		(*(scheduler+i))=(lq *)malloc(sizeof(lq));
@@ -405,6 +415,7 @@ void init(){
 /* create a new thread */
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
 	__atomic_test_and_set(&mode,0);
+	unprotect_sys();
 	if (!been_inited) {
 		init();
 		been_inited=1;
@@ -421,6 +432,7 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 
 
 	enqueue(curr, 0);
+	protect_sys();
 	if(!didStart){
 		didStart=1;
 		schedule();
@@ -428,12 +440,13 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 		__atomic_clear(&mode,0);
 
 	}
+	
 	return 0;
 };
 
 /* give CPU pocession to other user level threads voluntarily */
 int my_pthread_yield() {
-
+	unprotect_sys();
 	__atomic_test_and_set(&mode,0);
 	if (!been_inited) {
 		init();
@@ -485,6 +498,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 		been_inited=1;
 	}
 	__atomic_test_and_set(&mode,0);
+	unprotect_sys();
 	tcb * target= find(thread);
 	if(target!=NULL&&value_ptr!=NULL){
 		*value_ptr=&(target->res);
@@ -508,6 +522,7 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 		been_inited=1;
 	}
 	__atomic_test_and_set(&mode,0);
+	unprotect_sys();
 	mutex->id = mutexPool->size;
 	mutex->currT = NULL;
 	mutex->waiting = NULL;
@@ -519,7 +534,9 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 	}else{
 		while(ptr->next != NULL) {
 			if(ptr->id==mutex->id){
+				protect_sys();
 				__atomic_clear(&mode,0);
+				
 				return 0;
 			}
 			ptr = ptr->next;
@@ -540,7 +557,9 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
 		been_inited=1;
 	}
 	__atomic_test_and_set(&mode,0);
+	unprotect_sys();
 	if(mutex==NULL||mutex->id==NULL){
+		protect_sys();
 		__atomic_clear(&mode,0);
 		return -1;
 	}
@@ -577,9 +596,11 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 	}
 	//printf("ulock status %d\n", currThread->state);
 	__atomic_test_and_set(&mode,0);
+	unprotect_sys();
 	if(mutex==NULL||mutex->id==NULL||mutex->currT==NULL||mutex->currT->tid!=currThread->tid){
 		//printf("Can't do that\n");
 		//my_pthread_yield();
+		protect_sys();
 		__atomic_clear(&mode,0);
 		return -1;
 	}
@@ -607,6 +628,7 @@ int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 		been_inited=1;
 	}
 	__atomic_test_and_set(&mode,0);
+	unprotect_sys();
 	//printf("Destroying mutex: %d\n",*mutex);
 	my_pthread_mutex_t* ptr = mutexPool->front;
 	my_pthread_mutex_t * prev=NULL;
