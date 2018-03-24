@@ -128,14 +128,14 @@ void schedule(){
 				ucontext_t * prevContext=currThread->context;
 				currThread=next_tcb;
 				isHandling=0;
-				//set_pages(currThread);
+				set_pages(currThread);
 				//protect_sys();
 				__atomic_clear(&mode,0);
 				while(swapcontext(prevContext, next )<0);
 			}else{
 				isHandling=0;
 				currThread=next_tcb;
-				//set_pages(currThread);
+				set_pages(currThread);
 				//protect_sys();
 				__atomic_clear(&mode,0);
 				while(setcontext(next)<0);
