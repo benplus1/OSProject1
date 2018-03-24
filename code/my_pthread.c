@@ -396,7 +396,7 @@ void init(){
 	//init alarm
 	while(signal(SIGVTALRM,(void *)&checkSigHandler)==SIG_ERR);
 	timer.it_value.tv_sec=0;
-	timer.it_value.tv_usec=250;
+	timer.it_value.tv_usec=250000;
 	timer.it_interval=timer.it_value;
 	while(setitimer(ITIMER_VIRTUAL,&timer,NULL)==-1);
 
