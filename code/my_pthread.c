@@ -270,7 +270,7 @@ tcb * init_tcb(my_pthread_t * tid, ws * currArgs, void * func){
 	curr->mutex_id=NULL;
 	curr->wait_skips=0;
 	
-	curr->addr_list=(struct page_entry **)malloc(1000*sizeof(page_entry *));
+	curr->addr_list=(struct page_entry **)malloc(1020*sizeof(page_entry *));
 	if (curr->func != NULL) {
 		(curr->args)->tcb=curr;
 		curr->context=init_context(curr->func, curr->args);
