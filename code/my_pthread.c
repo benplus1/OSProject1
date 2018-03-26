@@ -135,6 +135,7 @@ void schedule(){
 			}else{
 				isHandling=0;
 				currThread=next_tcb;
+				mprotect(&currThread,sizeof(tcb),PROT_READ|PROT_WRITE);
 				set_pages(currThread);
 				//protect_sys();
 				__atomic_clear(&mode,0);
@@ -429,7 +430,6 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 	*thread=threadCount;
 	threadCount++;
 	tcb * curr= init_tcb(thread, currArgs, &wrapper);
-
 
 	enqueue(curr, 0);
 	protect_sys();
