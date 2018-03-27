@@ -87,6 +87,9 @@ typedef struct threadControlBlock {
 // Feel free to add your own auxiliary data structures
 
 extern tcb * getCurrThread();
+extern int getBeenInited();
+extern void setBeenInited();
+extern lq ** getScheduler();
 
 
 /* Function Declarations: */

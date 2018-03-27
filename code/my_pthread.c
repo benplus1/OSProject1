@@ -9,8 +9,6 @@
 
 #include "my_pthread_t.h"
 #include "OSProject2/my_malloc.c"
-#define  malloc(x) myallocate(x,LIBRARYREQ)
-#define  free(x) mydeallocate(x,LIBRARYREQ)
 
 
 const int RUNNING=0;
@@ -40,6 +38,7 @@ int isHandling=0;
 int didStart=0;
 struct itimerval timer;
 int memSize=4096;
+int stuckHereCtr = 0;
 //ucontext_t * tailFunc;
 
 tcb * currThread=NULL;
@@ -52,9 +51,21 @@ tcb * getCurrThread(){
 	return currThread;
 }
 
+lq ** getScheduler() {
+	return scheduler;
+}
+
+int getBeenInited() {
+	return been_inited;
+}
+
+void setBeenInited() {
+	been_inited=1;
+}
+
 
 void signal_handler(){
-	printf("Caught signal\n");
+	//printf("Caught signal\n");
 	unprotect_sys();
 	drop(currThread);
 	schedule();
@@ -76,7 +87,7 @@ void schedule(){
 	unprotect_sys();
 	if(!isHandling){
 		
-		printf("Scheduling\n");
+		//printf("Scheduling\n");
 		/*if(next_tcb->state==WAITRES){
 		  printf("SHEET%d\n", next_tcb->state);
 		  }*/
@@ -131,6 +142,9 @@ void schedule(){
 				set_pages(currThread);
 				//protect_sys();
 				__atomic_clear(&mode,0);
+				//printf("stuck here\n");
+				stuckHereCtr++;
+				//printf("stuck here counter is %d\n", stuckHereCtr);
 				while(swapcontext(prevContext, next )<0);
 			}else{
 				isHandling=0;
@@ -139,6 +153,7 @@ void schedule(){
 				set_pages(currThread);
 				//protect_sys();
 				__atomic_clear(&mode,0);
+				//printf("stuck there\n");
 				while(setcontext(next)<0);
 			}
 		}else{
@@ -232,51 +247,57 @@ void swap(tcb * curr1, tcb * curr2) {
 }
 
 ucontext_t * init_tail(){
-	ucontext_t * tailFunc=malloc(sizeof(ucontext_t));
+	ucontext_t * tailFunc=myallocate(sizeof(ucontext_t), LIBRARYREQ);
 	getcontext(tailFunc);
 	tailFunc->uc_link=0;
-	tailFunc->uc_stack.ss_sp=malloc(memSize);
+	tailFunc->uc_stack.ss_sp=myallocate(memSize, LIBRARYREQ);
 	tailFunc->uc_stack.ss_size=memSize;
 	tailFunc->uc_stack.ss_flags=0;
+	//if (getcontext(getCurrThread()->context) == -1) {
+    	//	printf("error here\n");
+	//}
 	makecontext(tailFunc,(void *)&my_pthread_exit, 0);
 	return tailFunc;
 }
 
 ucontext_t * init_context(void* func, void* arg){
-	ucontext_t * t=(ucontext_t *) malloc(sizeof(ucontext_t));
+	ucontext_t * t=(ucontext_t *) myallocate(sizeof(ucontext_t), LIBRARYREQ);
 	while(getcontext(t)==-1);
 	ucontext_t * tailFunc=init_tail();
 	t->uc_link=tailFunc;
-	t->uc_stack.ss_sp=malloc(memSize);
+	t->uc_stack.ss_sp=myallocate(memSize, LIBRARYREQ);
 	t->uc_stack.ss_size=memSize;
 	t->uc_stack.ss_flags=0;
+	//if (getcontext(getCurrThread()->context) == -1) {
+    	//	printf("error here\n");
+	//}
 	makecontext(t,func, 1, arg);
 	return t;
 }
 
 
 tcb * init_tcb(my_pthread_t * tid, ws * currArgs, void * func){
-	tcb * curr=(tcb *)malloc(sizeof(tcb));
+	tcb * curr=(tcb *)myallocate(sizeof(tcb), LIBRARYREQ);
 	curr->right=NULL;
 	curr->left=NULL;
 	curr->tid=tid;
 	curr->state=READY;
 	curr->priority=0;
 	curr->waiting=NULL;
-	curr->res=malloc(sizeof(void**));
+	curr->res=myallocate(sizeof(void**), LIBRARYREQ);
 	curr->args=currArgs;
 	curr->func=func;
 	curr->num_drops=0;
 	curr->mutex_id=NULL;
 	curr->wait_skips=0;
 	
-	curr->addr_list=(struct page_entry **)malloc(1020*sizeof(page_entry *));
+	curr->addr_list=(struct page_entry **)myallocate(1020*sizeof(page_entry *), LIBRARYREQ);
 	if (curr->func != NULL) {
 		(curr->args)->tcb=curr;
 		curr->context=init_context(curr->func, curr->args);
 	}
 	else {
-		ucontext_t * prevContext=malloc(sizeof(ucontext_t));
+		ucontext_t * prevContext=myallocate(sizeof(ucontext_t), LIBRARYREQ);
 		getcontext(prevContext);
 		curr->context=prevContext;
 	}
@@ -284,7 +305,7 @@ tcb * init_tcb(my_pthread_t * tid, ws * currArgs, void * func){
 }
 
 wn * init_wn(tcb * curr){
-	wn * waitNode=(wn *)malloc (sizeof(wn));
+	wn * waitNode=(wn *)myallocate (sizeof(wn), LIBRARYREQ);
 	waitNode->curr=curr;
 	waitNode->next=NULL;
 	return waitNode;
@@ -378,12 +399,12 @@ void init(){
 	scheduler=(lq **) myallocate(sizeof(lq *)*(numLevels+1),0);
 	int i;
 	for(i=0;i<numLevels+1;i++){
-		(*(scheduler+i))=(lq *)malloc(sizeof(lq));
+		(*(scheduler+i))=(lq *)myallocate(sizeof(lq), LIBRARYREQ);
 		(*(scheduler+i))->front=NULL;
 	}
 
-	ucontext_t * prevContext=malloc(sizeof(ucontext_t));
-	my_pthread_t * prev_tid=(my_pthread_t *)malloc(sizeof(my_pthread_t));;
+	ucontext_t * prevContext=myallocate(sizeof(ucontext_t), LIBRARYREQ);
+	my_pthread_t * prev_tid=(my_pthread_t *)myallocate(sizeof(my_pthread_t), LIBRARYREQ);
 	*prev_tid=-1;
 	getcontext(prevContext);
 	prevContext->uc_link=init_tail();
@@ -392,7 +413,7 @@ void init(){
 	//Init tail context for every thread
 
 	//init mutexpool
-	mutexPool = (mutexP *) malloc(sizeof(mutexP));
+	mutexPool = (mutexP *) myallocate(sizeof(mutexP), LIBRARYREQ);
 
 	//init alarm
 	while(signal(SIGVTALRM,(void *)&checkSigHandler)==SIG_ERR);
@@ -416,15 +437,16 @@ void init(){
 /* create a new thread */
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg) {
 	__atomic_test_and_set(&mode,0);
-	unprotect_sys();
 	if (!been_inited) {
-		init();
+		init_memory();
 		been_inited=1;
 	}
+	unprotect_sys();
+	
 
 	//ucontext_t * my_context = init_context(function,  arg);
 	//setcontext(&my_context);
-	ws * currArgs = (ws *) malloc(sizeof(ws));
+	ws * currArgs = (ws *) myallocate(sizeof(ws), LIBRARYREQ);
 	currArgs->func = function;
 	currArgs->args = arg;
 	*thread=threadCount;
@@ -446,12 +468,13 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 
 /* give CPU pocession to other user level threads voluntarily */
 int my_pthread_yield() {
-	unprotect_sys();
-	__atomic_test_and_set(&mode,0);
 	if (!been_inited) {
-		init();
+		init_memory();
 		been_inited=1;
 	}
+	unprotect_sys();
+	__atomic_test_and_set(&mode,0);
+	
 	cyclesLeft=0;
 	signal_handler();
 	return 0;
@@ -459,11 +482,12 @@ int my_pthread_yield() {
 
 /* terminate a thread */
 void my_pthread_exit(void *value_ptr) {
-	unprotect_sys();
 	if (!been_inited) {
-		init();
+		init_memory();
 		been_inited=1;
 	}
+	unprotect_sys();
+	
 	__atomic_test_and_set(&mode,0);
 	//printf("Exiting\n");
 
@@ -494,7 +518,7 @@ void my_pthread_exit(void *value_ptr) {
 /* wait for thread termination */
 int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 	if (!been_inited) {
-		init();
+		init_memory();
 		been_inited=1;
 	}
 	__atomic_test_and_set(&mode,0);
@@ -518,7 +542,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr) {
 /* initial the mutex lock */
 int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr) {
 	if (!been_inited) {
-		init();
+		init_memory();
 		been_inited=1;
 	}
 	__atomic_test_and_set(&mode,0);
@@ -553,7 +577,7 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 /* aquire the mutex lock */
 int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
 	if (!been_inited) {
-		init();
+		init_memory();
 		been_inited=1;
 	}
 	__atomic_test_and_set(&mode,0);
@@ -591,7 +615,7 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
 /* release the mutex lock */
 int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 	if (!been_inited) {
-		init();
+		init_memory();
 		been_inited=1;
 	}
 	//printf("ulock status %d\n", currThread->state);
@@ -624,7 +648,7 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 //NEED TO TEST
 int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 	if (!been_inited) {
-		init();
+		init_memory();
 		been_inited=1;
 	}
 	__atomic_test_and_set(&mode,0);

@@ -4,11 +4,11 @@
 
 // name:
 // username of iLab:
-// iLab Server: 
+// iLab Server:
 #ifndef MY_PTHREAD_T_H
 #define MY_PTHREAD_T_H
 #define _GNU_SOURCE
-#define pthread_create my_pthread_create 
+#define pthread_create my_pthread_create
 #define pthread_yield my_pthread_yield
 #define pthread_exit my_pthread_exit
 #define pthread_join my_pthread_join
@@ -24,22 +24,15 @@
 #include <stdlib.h>
 #include <ucontext.h>
 #include <sys/time.h>
-typedef uint my_pthread_t;
+#include "OSProject2/my_malloc.h"
 
-typedef struct threadControlBlock {
-	/* add something here */
-	struct threadControlBlock * left;
-	struct threadControlBlock * right;
-	struct  wait_node * waiting;
-	my_pthread_t * tid;
-	ucontext_t * context;
-	int state;
-	int priority;
-	int num_drops;
-	void * res;
-	struct wrapperstruct * args;
-	void * func;
-} tcb;
+
+
+
+//#include "OSProject2/my_malloc.h"
+extern int mode=0;
+
+typedef uint my_pthread_t;
 
 typedef struct wrapperstruct {
 	void * args;
@@ -70,7 +63,33 @@ typedef struct mutexP{
 	int size;
 }  mutexP;
 
+typedef struct threadControlBlock {
+	/* add something here */
+	struct threadControlBlock * left;
+	struct threadControlBlock * right;
+	struct  wait_node * waiting;
+	my_pthread_t * tid;
+	ucontext_t * context;
+	int state;
+	struct my_pthread_mutex_t * mutex_id;
+	int wait_skips;
+	int priority;
+	int num_drops;
+	void ** res;
+	struct wrapperstruct * args;
+	void * func;
+
+	page_entry ** addr_list;
+	int page_count;
+
+} tcb;
+
 // Feel free to add your own auxiliary data structures
+
+extern tcb * getCurrThread();
+extern int getBeenInited();
+extern void setBeenInited();
+extern lq ** getScheduler();
 
 
 /* Function Declarations: */
