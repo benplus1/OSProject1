@@ -48,7 +48,7 @@ int main(int argc, char ** argv){
 		printf("Param T0: %d %lx\n",*arr[0],arr[0]);
 
 	}
-	//pthread_create(&t2,NULL,(void*)&func2,w);
+	printf("dfhsfhdskfskfs\n");
 }
 
 

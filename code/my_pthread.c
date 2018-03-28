@@ -712,11 +712,11 @@ bool isSys=0;
 //const int PAGE_SIZE=4096;
 //
 const int TOTAL_MEM=8388608;
-const int PAGE_TABLE_SIZE=96;
-const int PAGE_TABLE_MEM=393216;
+const int PAGE_TABLE_SIZE=120;
+const int PAGE_TABLE_MEM=491520;
 const int NUM_PAGES=2048+4096;
 const int MEM_PAGES=2048;
-const int OS_PAGE_START = 100;
+const int OS_PAGE_START = 200;
 const int USER_PAGE_START = 1024;
 const int SHARED_PAGE_START=2044;
 
@@ -726,6 +726,8 @@ int OS_PAGE_COUNT = 0;
 int USER_PAGE_COUNT = 0;
 int SHARED_PAGE_COUNT=1;
 FILE * writer;
+
+int EVICTMODE = 1;
 
 int currOff=0;
 int curr_swp_bytes=0;
@@ -751,10 +753,17 @@ static void handler(int sig, siginfo_t *si, void *unused) {
 			printf("valid page: %d\n", prob_addr);
 
 			if(currPage->inRAM){
-				page_entry * imposter=getPage(currPage->realFrame);
-				swap_frames(currPage,imposter);
+				if (currPage->in_mem_swapped) {
+					page_entry * imposter = getPage(currPage->realFrame);
+					swap_frames(currPage, imposter);
+					currPage->in_mem_swapped=false;
+				}
+				else {
+					page_entry * imposter=getPage(currPage->realFrame);
+					swap_frames(currPage,imposter);
+				}
 			}else{
-				page_entry * victim=evict(0);
+				page_entry * victim=evict(EVICT_MODE);
 				to_swap_file(victim, currPage,false);
 			}
 			protect_sys();
@@ -1004,8 +1013,77 @@ page_entry * evict(int mode){
 		}
 
 	}
+	if (mode==1) {//second chance
+		int i;
+		page_entry * ptr;
+		for (i = 0; i < 2; i++) {//change < 2 for nth chance
+			ptr = freeHead;
+			while (ptr->next != NULL) {
+				if (ptr->use_bit == 0) {//found victim; in memory swapping here;
+					page_entry * check_high_used = freeHead;
+					page_entry * highest_used = ptr;
+					bool ptr_is_highest_used = true;
+					while (check_high_used->next != NULL) {
+						if (check_high_used->mem_use_bit > highest_used->mem_use_bit) {
+							ptr_is_highest_used=false;
+							break;
+						}
+					}
+					if (ptr_is_highest_used) {
+						page_entry * new_victim;
+						if (ptr == freeHead) {
+							new_victim = ptr->next;
+						}
+						else {
+							new_victim = freeHead;
+						}
+						//move highest_used's frame to new_victim's frame
+						//move new_victim's frame to swap file (in handler)
+						//move currPage's frame to highest_used's frame (in handler)
+						swap_frames(new_victim, ptr);
+						ptr->in_mem_swapped=true;
+						return new_victim;
+					}
+					deleteFree(ptr);
+					return ptr;
+				}
+				else if (ptr->use_bit > 0) {//change to > 0 if nth chance
+					ptr->use_bit = 0;
+					ptr = ptr->next;
+				}
+			}
+		}
+		if (ptr != NULL) {
+			//checking if highest used
+			
+			ptr->use_bit = 0;
+			deleteFree(ptr);
+			return ptr;
+		}
+	}
 	return NULL;
 }
+
+void inmem_swap_frames(page_entry * p1, page_entry * p2) {
+	mprotect(p1->currFrame,PAGE_SIZE,PROT_READ|PROT_WRITE);
+	mprotect(p2->currFrame,PAGE_SIZE,PROT_READ|PROT_WRITE);
+
+	frame * f1 = p1->currFrame;
+	frame * f2 = p2->currFrame;
+	char temp[PAGE_SIZE];
+
+	memcpy(temp, f1, PAGE_SIZE);
+	memcpy(f1, f2, PAGE_SIZE);
+	memcpy(f2, temp, PAGE_SIZE);
+
+	p1->currFrame=f2;
+	p2->currFrame=f1;
+
+	mprotect(p2->currFrame, PAGE_SIZE, PROT_NONE);
+	mprotect(p1->currFrame,PAGE_SIZE, PROT_READ|PROT_WRITE);
+}
+
+
 page_entry * add_user_page(tcb * thread){
 
 	if(thread->page_count>=1020){
@@ -1018,7 +1096,7 @@ page_entry * add_user_page(tcb * thread){
 			return NULL;
 		}
 	
-		page_entry * victim = evict(0);
+		page_entry * victim = evict(EVICT_MODE);
 		if(victim==NULL){
 			printf("No victim\n");
 			return NULL;
@@ -1099,7 +1177,7 @@ void init_memory() {
 	  pt->currFrame=pt->realFrame;*/
 	OS_HARD_END = (char *) myMemory + PAGE_SIZE*1024;
 	USER_HARD_END = (char *) myMemory + PAGE_SIZE*2048;
-	OS_PAGE_COUNT+=76;
+	OS_PAGE_COUNT+=124;
 	init_signal();	
 	init();
 	protect_sys();
@@ -1156,6 +1234,7 @@ void check_sys_list(){
 
 page_entry * use_page(int mode) {
 	//tcb * curr=getCurrThread();
+	check_sys_list();
 	if (mode==LIBRARYREQ) {
 		if(OS_PAGE_START+OS_PAGE_COUNT<1024){
 			page_entry * p = &page_table[OS_PAGE_START+OS_PAGE_COUNT];
@@ -1190,6 +1269,7 @@ page_entry * use_page(int mode) {
 		
 		return NULL;
 	}
+	check_sys_list();
 	printf("Wrong\n");
 	return NULL;
 }
@@ -1280,9 +1360,11 @@ void * mallocSharedBlock(size_t size){
 }
 
 void * mallocThreadBlock(size_t size, tcb * thread){
+	check_sys_list();
 	if(thread->page_count==0){
 		add_user_page(thread);	
 	}
+	check_sys_list();
 
 	page_entry * currPage=thread->addr_list[0];
 	meta * ptr = &((currPage->currFrame)->start);
@@ -1290,7 +1372,7 @@ void * mallocThreadBlock(size_t size, tcb * thread){
 	while((ptr)!= NULL) {//this loop searches for a meta that doesn't point to another node
 
 		if((*ptr).isFree == 1 && (*ptr).size >= size) {	//again checks for a reusable meta of same size
-
+			check_sys_list();
 			(*ptr).isFree = 0;
 			errno = 0;
 			int rem =ptr->size-(sizeof(meta)+size);
@@ -1317,6 +1399,7 @@ void * mallocThreadBlock(size_t size, tcb * thread){
 		}
 
 		if(ptr->next==NULL){
+			check_sys_list();
 			page_entry * extra = add_user_page(thread);
 			if(extra==NULL){ //couln't get another pa-ge
 				break;
@@ -1330,51 +1413,6 @@ void * mallocThreadBlock(size_t size, tcb * thread){
 
 	}
 
-
-
-
-	/*char * rem =(char*)(ptr + 1) + (*ptr).size + size;
-	  char * end= (char *)(currPage->currFrame) + PAGE_SIZE;
-	  if(rem>end){ //link up block between frames?
-	  int running_size=0
-	  running_size+=ptr->size;
-	  frame* nextFrame=end;
-
-	  tcb * currThread=getCurrThread();
-	  frame * lastFrame=(char *)(currThread->addr_list[currThread->page_count-1]->realFrame)+PAGE_SIZE; //End bound of last possible frame to link with
-
-	  while(running_size<=size){
-	  if(nextFrame>=lastFrame){
-	  return NULL; //peeking frame is last frame given to thread
-	  }
-	  meta * frameStart=nextFrame->start;
-	  if(frameStart->isFree){
-	  ptr->size=ptr->size+sizeof(meta)+frameStart->size;
-	  ptr->next=frameStart->next;
-	  running_size-=frameStart->size;
-	  }else{
-	  return NULL; //Not enough space to link up and fulfill request
-	  }
-	  nextFrame=(char *)nextFrame+PAGE_SIZE;
-
-	  }	
-
-
-	  }
-
-	  meta * newMem;								//a new node is made
-	  newMem = (meta*)((char*)(ptr + 1) + (*ptr).size);
-	  (*ptr).next = newMem;
-	  (*newMem).prev = ptr;
-	  (*newMem).size = size;
-	  (*newMem).isFree = 0;
-	  (*newMem).data = (char *)(newMem + 1);
-	  (*newMem).next = NULL;
-
-
-	  errno = 0;	//if malloc succeeds then errno is set to 0 otherwise it is set to -1
-	//printf("ok, ");
-	return (*newMem).data;*/
 	return NULL;
 
 
@@ -1385,7 +1423,7 @@ void * mallocSysBlock(size_t size){
 	meta * ptr= &(page_table[OS_PAGE_START].currFrame->start);
 	while((ptr)!= NULL) {//this loop searches for a meta that doesn't point to another node
 		if((*ptr).isFree == 1 && (*ptr).size >= size) {	//again checks for a reusable meta of same size
-
+			check_sys_list();
 			(*ptr).isFree = 0;
 			errno = 0;
 			int rem =ptr->size-(sizeof(meta)+size);
@@ -1412,12 +1450,14 @@ void * mallocSysBlock(size_t size){
 		}
 
 		if(ptr->next==NULL){
+			check_sys_list();
 			page_entry * extra = add_sys_page();
 			if(extra==NULL){ //couln't get another pa-ge
 				break;
 			}
 			extra->realFrame=extra->currFrame;
 			mergeFrames(ptr,extra->realFrame);
+			check_sys_list();
 			continue;	
 		}
 		ptr = (*ptr).next;
@@ -1428,7 +1468,7 @@ void * mallocSysBlock(size_t size){
 }
 
 void freeBlock(void *pointer){
-
+	check_sys_list();
 	meta* ptr = (meta*)pointer - 1; //gets the meta * ptr that points to the malloced pointer
 
 
@@ -1465,7 +1505,7 @@ void freeBlock(void *pointer){
 		}
 
 	}
-
+	check_sys_list();
 	errno = 0;		//if free succeeds then errno is set to zero otherwise it is set to -1
 
 
