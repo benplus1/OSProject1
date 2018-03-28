@@ -30,12 +30,24 @@ int main(int argc, char ** argv){
 	int w=4;
 	int i=200;
 	int * arr[20000];
-	arr[0] = (int *) malloc(sizeof(int)*4096*200);
-	*arr[0]=38;
-	
-	pthread_create(&t1,NULL,(void*)&func2,w);
-	pthread_join(t1,NULL);	
-	printf("Param T0: %d %lx\n",*arr[0],arr[0]);
+	int j;
+	for (j=0;j<10;j++){
+		arr[j] = (int *) malloc(sizeof(int)*4096*20);
+		if(arr[j]==NULL){
+			printf("Freeing memory \n");
+			free(arr[j-1]);
+			arr[j]=malloc(sizeof(int)*4096*200);
+		}
+		*arr[j]=19;
+	}	
+
+	for(j=0;j<10;j++){
+
+		pthread_create(&t1,NULL,(void*)&func2,w);
+		pthread_join(t1,NULL);	
+		printf("Param T0: %d %lx\n",*arr[0],arr[0]);
+
+	}
 	//pthread_create(&t2,NULL,(void*)&func2,w);
 }
 
