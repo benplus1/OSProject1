@@ -5,12 +5,13 @@
 // name: Hemanth Chiluka, Andrew Dos Reis, Benjamin Yang
 // username of iLab: hkc33, ad1005, bty10
 // iLab Server: adapter
-
-
 #include "my_pthread_t.h"
-#include "OSProject2/my_malloc.c"
 
 
+//Mode constants
+int LIBRARYREQ=0;
+int THREADREQ=1;
+int mode=0;
 const int RUNNING=0;
 const int WAITRES=1;
 const int READY=2;
@@ -247,10 +248,10 @@ void swap(tcb * curr1, tcb * curr2) {
 }
 
 ucontext_t * init_tail(){
-	ucontext_t * tailFunc=myallocate(sizeof(ucontext_t), LIBRARYREQ);
+	ucontext_t * tailFunc=myallocate(sizeof(ucontext_t),__FILE__,__LINE__, LIBRARYREQ);
 	getcontext(tailFunc);
 	tailFunc->uc_link=0;
-	tailFunc->uc_stack.ss_sp=myallocate(memSize, LIBRARYREQ);
+	tailFunc->uc_stack.ss_sp=myallocate(memSize,__FILE__,__LINE__, LIBRARYREQ);
 	tailFunc->uc_stack.ss_size=memSize;
 	tailFunc->uc_stack.ss_flags=0;
 	//if (getcontext(getCurrThread()->context) == -1) {
@@ -261,11 +262,11 @@ ucontext_t * init_tail(){
 }
 
 ucontext_t * init_context(void* func, void* arg){
-	ucontext_t * t=(ucontext_t *) myallocate(sizeof(ucontext_t), LIBRARYREQ);
+	ucontext_t * t=(ucontext_t *) myallocate(sizeof(ucontext_t),__FILE__,__LINE__, LIBRARYREQ);
 	while(getcontext(t)==-1);
 	ucontext_t * tailFunc=init_tail();
 	t->uc_link=tailFunc;
-	t->uc_stack.ss_sp=myallocate(memSize, LIBRARYREQ);
+	t->uc_stack.ss_sp=myallocate(memSize,__FILE__,__LINE__, LIBRARYREQ);
 	t->uc_stack.ss_size=memSize;
 	t->uc_stack.ss_flags=0;
 	//if (getcontext(getCurrThread()->context) == -1) {
@@ -277,27 +278,27 @@ ucontext_t * init_context(void* func, void* arg){
 
 
 tcb * init_tcb(my_pthread_t * tid, ws * currArgs, void * func){
-	tcb * curr=(tcb *)myallocate(sizeof(tcb), LIBRARYREQ);
+	tcb * curr=(tcb *)myallocate(sizeof(tcb),__FILE__,__LINE__, LIBRARYREQ);
 	curr->right=NULL;
 	curr->left=NULL;
 	curr->tid=tid;
 	curr->state=READY;
 	curr->priority=0;
 	curr->waiting=NULL;
-	curr->res=myallocate(sizeof(void**), LIBRARYREQ);
+	curr->res=myallocate(sizeof(void**),__FILE__,__LINE__, LIBRARYREQ);
 	curr->args=currArgs;
 	curr->func=func;
 	curr->num_drops=0;
 	curr->mutex_id=NULL;
 	curr->wait_skips=0;
 	
-	curr->addr_list=(struct page_entry **)myallocate(1020*sizeof(page_entry *), LIBRARYREQ);
+	curr->addr_list=(struct page_entry **)myallocate(1020*sizeof(page_entry *), __FILE__,__LINE__, LIBRARYREQ);
 	if (curr->func != NULL) {
 		(curr->args)->tcb=curr;
 		curr->context=init_context(curr->func, curr->args);
 	}
 	else {
-		ucontext_t * prevContext=myallocate(sizeof(ucontext_t), LIBRARYREQ);
+		ucontext_t * prevContext=myallocate(sizeof(ucontext_t),__FILE__,__LINE__, LIBRARYREQ);
 		getcontext(prevContext);
 		curr->context=prevContext;
 	}
@@ -305,7 +306,7 @@ tcb * init_tcb(my_pthread_t * tid, ws * currArgs, void * func){
 }
 
 wn * init_wn(tcb * curr){
-	wn * waitNode=(wn *)myallocate (sizeof(wn), LIBRARYREQ);
+	wn * waitNode=(wn *)myallocate (sizeof(wn),__FILE__,__LINE__, LIBRARYREQ);
 	waitNode->curr=curr;
 	waitNode->next=NULL;
 	return waitNode;
@@ -396,15 +397,15 @@ void init(){
 	//printf("Initializing Structs\n");
 	//Init scheduler
 	
-	scheduler=(lq **) myallocate(sizeof(lq *)*(numLevels+1),0);
+	scheduler=(lq **) myallocate(sizeof(lq *)*(numLevels+1),__FILE__,__LINE__,0);
 	int i;
 	for(i=0;i<numLevels+1;i++){
-		(*(scheduler+i))=(lq *)myallocate(sizeof(lq), LIBRARYREQ);
+		(*(scheduler+i))=(lq *)myallocate(sizeof(lq),__FILE__,__LINE__, LIBRARYREQ);
 		(*(scheduler+i))->front=NULL;
 	}
 
-	ucontext_t * prevContext=myallocate(sizeof(ucontext_t), LIBRARYREQ);
-	my_pthread_t * prev_tid=(my_pthread_t *)myallocate(sizeof(my_pthread_t), LIBRARYREQ);
+	ucontext_t * prevContext=myallocate(sizeof(ucontext_t), __FILE__,__LINE__, LIBRARYREQ);
+	my_pthread_t * prev_tid=(my_pthread_t *)myallocate(sizeof(my_pthread_t),__FILE__,__LINE__, LIBRARYREQ);
 	*prev_tid=-1;
 	getcontext(prevContext);
 	prevContext->uc_link=init_tail();
@@ -413,7 +414,7 @@ void init(){
 	//Init tail context for every thread
 
 	//init mutexpool
-	mutexPool = (mutexP *) myallocate(sizeof(mutexP), LIBRARYREQ);
+	mutexPool = (mutexP *) myallocate(sizeof(mutexP),__FILE__,__LINE__, LIBRARYREQ);
 
 	//init alarm
 	while(signal(SIGVTALRM,(void *)&checkSigHandler)==SIG_ERR);
@@ -446,7 +447,7 @@ int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*func
 
 	//ucontext_t * my_context = init_context(function,  arg);
 	//setcontext(&my_context);
-	ws * currArgs = (ws *) myallocate(sizeof(ws), LIBRARYREQ);
+	ws * currArgs = (ws *) myallocate(sizeof(ws),__FILE__,__LINE__, LIBRARYREQ);
 	currArgs->func = function;
 	currArgs->args = arg;
 	*thread=threadCount;
@@ -692,3 +693,830 @@ int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
 	//free(mutex);
 	return -1;
 };
+
+
+
+
+
+//MALLOC CODE STARTS HERE
+
+
+
+static short start = 0;
+static char * myMemory; //character array which is used as memory
+page_entry * page_table;
+bool isSys=0;
+
+//const int SYS_MEM_END=MEM_SIZE/8; //Point in char array where sys memory ends
+//const int SHARED_MEM_SIZE=4*PAGE_SIZE; //Shared memory size
+//const int PAGE_SIZE=4096;
+//
+const int TOTAL_MEM=8388608;
+const int PAGE_TABLE_SIZE=96;
+const int PAGE_TABLE_MEM=393216;
+const int NUM_PAGES=2048+4096;
+const int MEM_PAGES=2048;
+const int OS_PAGE_START = 100;
+const int USER_PAGE_START = 1024;
+const int SHARED_PAGE_START=2044;
+
+char * OS_HARD_END;
+char * USER_HARD_END;
+int OS_PAGE_COUNT = 0;
+int USER_PAGE_COUNT = 0;
+int SHARED_PAGE_COUNT=1;
+FILE * writer;
+
+int currOff=0;
+int curr_swp_bytes=0;
+bool RAM_FULL=false;
+page_entry * freeHead=NULL;
+
+void testMem(char * ptr){
+	*ptr='a';
+}
+
+//init functions
+static void handler(int sig, siginfo_t *si, void *unused) {
+	printf("Got SIGSEGV at address: 0x%lx\n",(long) si->si_addr);
+	tcb * currThread = getCurrThread();
+	printf("currthread is: %d\n", currThread->tid);
+	long prob_addr = (long) si->si_addr;
+	page_entry ** addrs = currThread->addr_list;
+	unprotect_sys();
+	int i;
+	for (i = 0; i < currThread->page_count; i++) {
+		page_entry * currPage = addrs[i];
+		if ((currPage->realFrame) <= prob_addr && ((char *)(currPage->realFrame)+PAGE_SIZE>prob_addr)){
+			printf("valid page: %d\n", prob_addr);
+
+			if(currPage->inRAM){
+				page_entry * imposter=getPage(currPage->realFrame);
+				swap_frames(currPage,imposter);
+			}else{
+				page_entry * victim=evict(0);
+				to_swap_file(victim, currPage,false);
+			}
+			protect_sys();
+			return;
+		}
+	}
+
+	signal(SIGSEGV, SIG_DFL);
+}
+
+void protect_sys(){
+	//if(!isSys) return;
+	/*int res=mprotect(myMemory,(USER_PAGE_START)*PAGE_SIZE,PROT_NONE); //Protect all un malloced pages except one with page table
+	  if(res==-1) printf("damn\n");*/
+	isSys=false;
+}
+
+void unprotect_sys(){
+	//if(isSys) return ;
+	int res=mprotect(myMemory,(USER_PAGE_START)*PAGE_SIZE,PROT_READ|PROT_WRITE); //Protect all un malloced pages except one with page table
+
+	if(res==-1) printf("damn\n");
+	isSys=true;
+}
+
+page_entry * getPage(frame * frame){
+	mprotect(frame,PAGE_SIZE,PROT_READ|PROT_WRITE);
+	int i;
+	for (i = OS_PAGE_START; i < NUM_PAGES; i++) {
+		if (page_table[i].currFrame == frame) {
+			//mprotect(frame,PAGE_SIZE,PROT_NONE);
+			return &(page_table[i]);
+		}
+	}
+	return NULL;
+}
+
+frame * getFrame(int index){
+	frame * f = (frame *) (myMemory + (index * PAGE_SIZE));
+	return f;
+}
+
+frame * getFrameFromPtr(char * ptr){
+	int i = (((int) ptr-1) - ((int) myMemory))/PAGE_SIZE;
+	return myMemory+PAGE_SIZE*i;
+}
+
+meta * findLastMeta(frame * frame){
+	meta * start= &(frame->start);
+	while(start->next!=NULL){
+		start=start->next;
+
+	}
+	return start;
+}
+//release pages when thread dies
+void free_pages(tcb * thread){
+	int i;
+	for(i=0;i<thread->page_count;i++){
+		page_entry * page = thread->addr_list[i];
+		page->isValid=0;
+		memset(page->currFrame,0,PAGE_SIZE);
+		frame * frame=page->currFrame;
+		meta * start= &(frame->start);
+		start->size=PAGE_SIZE-sizeof(meta);
+		start->prev=NULL;
+		start->next=NULL;
+		start->data=(char *)start+ sizeof(meta);
+		start->isFree=1;
+	}
+	unset_pages(thread);
+
+}
+
+deleteFree(page_entry * page){
+	
+	page_entry * left= page->prev;
+	page_entry * right=page->next;
+	if(left!=NULL){
+		left->next=right;
+	}
+
+	if(right!=NULL){
+		right->prev=left;
+	}
+	if(page==freeHead){
+		freeHead=freeHead->next;
+	}
+	page->prev=NULL;
+	page->next=NULL;
+
+}
+
+addFree(page_entry * ptr){
+	if(freeHead==NULL){
+		freeHead=ptr;
+		ptr->next=NULL;
+		ptr->prev=NULL;
+		return;
+	}
+	ptr->next=freeHead;
+	freeHead->prev=ptr;
+	freeHead=ptr;
+
+
+}
+//protects previous thread's pages
+void unset_pages(tcb * thread){
+	int i;
+	for (i=0;i<thread->page_count;i++){
+		page_entry * page=thread->addr_list[i];
+		if(page->inRAM){
+			addFree(page);
+		}
+		mprotect(page->currFrame, PAGE_SIZE,PROT_NONE);
+	}
+
+}
+
+//unprotects curr thread's pages
+void set_pages(tcb * curr){
+
+	int i;
+	for (i=0;i<curr->page_count;i++){
+		page_entry * page=curr->addr_list[i];
+		deleteFree(page);
+		/*if(page->realFrame!=page->currFrame){
+		  page_entry * imposter= getPage(page->realFrame);
+		  swap_frames(page,imposter);
+		}*/
+		  mprotect(page->currFrame,PAGE_SIZE,PROT_READ|PROT_WRITE);
+	}
+
+}
+
+
+
+
+//swaps frames of two pages, mprotects for the new swapped in frame
+//Mmay make sense to set p1's real frame here
+void swap_frames(page_entry * p1, page_entry * p2) {
+	mprotect(p1->currFrame,PAGE_SIZE,PROT_READ|PROT_WRITE);
+	mprotect(p2->currFrame,PAGE_SIZE,PROT_READ|PROT_WRITE);
+
+	frame * f1 = p1->currFrame;
+	frame * f2 = p2->currFrame;
+	char temp[PAGE_SIZE];
+	
+	if(f1==NULL){
+	
+	}
+	memcpy(temp, f1, PAGE_SIZE);
+	memcpy(f1, f2, PAGE_SIZE);
+	memcpy(f2, temp, PAGE_SIZE);
+
+	p1->currFrame=f2;
+	p2->currFrame=f1;
+
+	mprotect(p2->currFrame, PAGE_SIZE, PROT_NONE);
+	mprotect(p1->currFrame,PAGE_SIZE, PROT_READ|PROT_WRITE);
+}
+
+void mergeFrames(meta * firstEnd, frame * second){
+	char * end= (char *) firstEnd+ sizeof(meta)+firstEnd->size;
+	meta * secondStart=&(second->start);
+	firstEnd->next=secondStart;
+	secondStart->prev=firstEnd;
+	if(secondStart->next!=NULL){
+		secondStart->next=NULL;
+	}	
+	if(firstEnd->isFree&&secondStart->isFree){
+		firstEnd->next=secondStart->next;
+		firstEnd->size=firstEnd->size+sizeof(meta)+secondStart->size;
+	}else{
+	//	printf("Why not free?\n");
+	}
+
+}
+
+
+void to_swap_file(page_entry * to_swap, page_entry * to_RAM, bool isNew){
+	//FILE * orig=writer;
+	to_swap->inRAM=false;
+	to_swap->swp_offset=to_RAM->swp_offset;
+	curr_swp_bytes+=PAGE_SIZE;
+	to_RAM->inRAM=true;
+	to_RAM->swp_offset=-1;
+	to_RAM->currFrame=to_swap->currFrame;
+
+	mprotect(to_RAM->currFrame, PAGE_SIZE, PROT_READ|PROT_WRITE);
+	int error=fseek(writer,(to_swap->swp_offset)*PAGE_SIZE,SEEK_SET);	
+	if(error==0){
+		char buffer[PAGE_SIZE];
+		currOff=to_swap->swp_offset;
+		fread(buffer, 1,4096,writer);
+		fseek(writer, (to_swap->swp_offset)*PAGE_SIZE,SEEK_SET);
+
+		char temp[PAGE_SIZE];
+		memcpy(temp, to_swap->currFrame, 4096);
+		fwrite(temp,1, 4096, writer);
+
+		memcpy( to_RAM->currFrame,buffer, 4096);
+		
+		fseek(writer, (to_swap->swp_offset)*PAGE_SIZE, SEEK_SET);
+		char test[PAGE_SIZE];
+		fread(test, 1,4096,writer);
+		
+		meta * start= &(to_RAM->currFrame->start);
+		if(isNew){
+			start->isFree=true;
+			start->size=PAGE_SIZE-sizeof(meta);
+			start->prev=NULL;		
+			start->next=NULL;
+			start->data=(char *)start+sizeof(meta);	
+		}else{
+			int x=4;
+		}
+		to_swap->currFrame=NULL;
+	}
+	//fclose(orig);
+
+}
+
+page_entry * evict(int mode){
+	tcb * thread=getCurrThread();
+	if(mode==0){
+		int i;
+
+		for (i=USER_PAGE_START;i<NUM_PAGES;i++){
+			if(i>=SHARED_PAGE_START&&i<MEM_PAGES){
+				continue;
+				
+			}
+			page_entry * p =&page_table[i];
+			int j;
+			bool isMine=false;
+			for(j=0;j<thread->page_count;j++){
+				if(thread->addr_list[j]==p){
+					isMine=true;
+					break;
+				}
+			}
+			if(!isMine&&(p->inRAM==1)&&p->currFrame!=NULL){
+				return p;
+			}
+
+		}
+
+	}
+	return NULL;
+}
+page_entry * add_user_page(tcb * thread){
+
+	if(thread->page_count>=1020){
+		return NULL; //Frame is out of bounds 
+	}
+	page_entry * page= use_page(THREADREQ);
+	if(page==NULL){
+		page=use_swap_page();
+		if(page==NULL){
+			return NULL;
+		}
+	
+		page_entry * victim = evict(0);
+		if(victim==NULL){
+			printf("No victim\n");
+			return NULL;
+		}
+		
+		mprotect(victim->currFrame,PAGE_SIZE, PROT_WRITE|PROT_READ);
+		to_swap_file(victim,page,true);
+	}	
+
+	if(page->currFrame==NULL){
+		printf("PAGE CURR FRAME NULL WHAAAAT\n");
+	}
+	if(thread->page_count>0){
+		page_entry * prev=thread->addr_list[thread->page_count-1];
+		frame * target= (frame *)((char *)prev->realFrame+PAGE_SIZE);
+		page_entry * targetPage=getPage(target);
+		swap_frames(page,targetPage);
+
+		(page->realFrame)=page->currFrame;
+		mprotect(page->currFrame,PAGE_SIZE, PROT_READ|PROT_WRITE); //Page now available to thread
+	}else{
+		frame * start = myMemory+ (PAGE_SIZE *USER_PAGE_START);
+		page_entry * startPage= getPage(start);
+		
+		swap_frames(page,startPage);
+		(page->realFrame)=page->currFrame;
+		mprotect(page->currFrame,PAGE_SIZE, PROT_READ|PROT_WRITE); //Page now available to thread
+	}
+
+	page->currFrame->start.data=&(page->currFrame->start)+1;
+
+	page->isValid=1;
+	thread->addr_list[thread->page_count]=page;
+	thread->page_count++;
+
+	return page;
+
+}
+
+page_entry * add_shared_page(){
+	if(SHARED_PAGE_COUNT>=4) return NULL;
+	page_entry * p=&page_table[SHARED_PAGE_START+SHARED_PAGE_COUNT];	
+	SHARED_PAGE_COUNT++;
+	return p;
+}
+page_entry * add_sys_page(){
+	page_entry * page=use_page(LIBRARYREQ);
+
+	return page;
+}
+
+
+frame * init_frame(page_entry * pe, int offset) {
+	frame * f = (frame *) (myMemory + (offset * PAGE_SIZE));
+	//f->isValid = 0;
+	//f->o_page=pe;
+	//f->start = (char *)f+sizeof(frame);
+	f->start.isFree=1;
+	f->start.next=NULL;
+	f->start.prev=NULL;
+	f->start.size=PAGE_SIZE-sizeof(meta);
+	f->start.data=&(f->start)+1;
+	//f->hasMem = false;
+	return f;
+}
+
+
+//init page table
+void init_memory() {
+	been_inited=1;
+	__atomic_test_and_set(&mode,0);
+	writer = fopen("project2.swp", "w+");
+	myMemory=(char *)memalign(PAGE_SIZE, TOTAL_MEM);
+	init_page_table();
+	/*page_entry * pt= (page_entry*) (myMemory);
+	  pt->index = OS_PAGE_COUNT;
+	  pt->realFrame = init_frame(pt,1);
+	  pt->currFrame=pt->realFrame;*/
+	OS_HARD_END = (char *) myMemory + PAGE_SIZE*1024;
+	USER_HARD_END = (char *) myMemory + PAGE_SIZE*2048;
+	OS_PAGE_COUNT+=76;
+	init_signal();	
+	init();
+	protect_sys();
+	mprotect(myMemory+PAGE_SIZE*1024,PAGE_SIZE* 1020,PROT_NONE);
+	__atomic_clear(&mode,0);
+}
+
+void init_signal() {
+	struct sigaction sa;
+	sa.sa_flags = SA_SIGINFO;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_sigaction = handler;
+
+	if (sigaction(SIGSEGV, &sa, NULL) == -1)
+	{
+		printf("Fatal error setting up signal handler\n");
+		exit(EXIT_FAILURE);    //explode!
+	}
+}
+
+page_entry * use_swap_page(){
+	int i;
+	tcb * curr= getCurrThread();
+	for(i=USER_PAGE_START;i<NUM_PAGES;i++){
+		page_entry * page= &(page_table[i]);
+		int j;
+		bool isMine=false;
+		for (j=0;j<curr->page_count;j++){
+			if(curr->addr_list[j]==page){
+				isMine=true;
+				break;
+			}
+		}
+		if((!page->inRAM)&&(!isMine)&&(!page->isValid)){
+			return page;
+		}
+	} 
+	return NULL;
+
+}
+
+void check_sys_list(){
+	
+	meta * ptr= &(page_table[OS_PAGE_START].currFrame->start);
+	int i=0;
+	while(ptr!=NULL){
+		if(ptr->isFree>1){
+			printf("Ptr fuked at %d\n",i);
+		}
+		i++;
+		ptr=ptr->next;
+	}
+}
+
+page_entry * use_page(int mode) {
+	//tcb * curr=getCurrThread();
+	if (mode==LIBRARYREQ) {
+		if(OS_PAGE_START+OS_PAGE_COUNT<1024){
+			page_entry * p = &page_table[OS_PAGE_START+OS_PAGE_COUNT];
+			p->index = OS_PAGE_COUNT+OS_PAGE_START;
+			p->currFrame=myMemory+(p->index*PAGE_SIZE);
+			p->realFrame=myMemory+(p->index*PAGE_SIZE);
+			OS_PAGE_COUNT++;
+			return p;
+
+		}else{
+			return NULL;
+		}
+		
+	}
+	else if (mode ==THREADREQ){
+		/*page_entry * p = &page_table[USER_PAGE_START + USER_PAGE_COUNT];
+		  p->index = USER_PAGE_START + USER_PAGE_COUNT;
+		  USER_PAGE_COUNT++;*/
+		
+		int i;
+		for(i=USER_PAGE_START;i<MEM_PAGES;i++){
+			if(i>=SHARED_PAGE_START&&i<MEM_PAGES){
+				continue;
+			}
+			page_entry * ptr = &page_table[i];
+			if(ptr->inRAM==1&&ptr->isValid==0){
+				//deleteFree(ptr);
+				return ptr;
+
+			}
+		}
+		
+		return NULL;
+	}
+	printf("Wrong\n");
+	return NULL;
+}
+
+
+void init_page_table(){
+	page_table=(void *)myMemory;
+	int i;
+
+	for(i=NUM_PAGES-1;i>=OS_PAGE_START;i--){
+		page_table[i].index=i;
+		page_table[i].isValid=0;
+		page_table[i].hasMem=false;
+		if(i<MEM_PAGES){
+			page_table[i].inRAM=true;
+			frame * currFrame=init_frame(&page_table[i],i);
+			page_table[i].realFrame=currFrame;
+			page_table[i].currFrame=currFrame;
+		}else{
+			page_table[i].swp_offset=i-MEM_PAGES;
+		}
+		if(i>1024&&i<(SHARED_PAGE_START)){
+			if(freeHead==NULL){
+				freeHead=&(page_table[i]);
+			}else{
+				page_entry * ptr = &page_table[i];
+				ptr->next=freeHead;
+				freeHead->prev=ptr;
+				freeHead=ptr;
+			}
+		}
+	}
+	int y=6;
+}
+
+
+
+
+void * mallocSharedBlock(size_t size){
+	page_entry * page=&page_table[SHARED_PAGE_START];
+	meta * ptr = &((page->currFrame)->start);
+
+	while((ptr)!= NULL) {//this loop searches for a meta that doesn't point to another node
+
+		if((*ptr).isFree == 1 && (*ptr).size >= size) {	//again checks for a reusable meta of same size
+
+			(*ptr).isFree = 0;
+			errno = 0;
+			int rem =ptr->size-(sizeof(meta)+size);
+			if(rem>0){
+				meta * remPtr= (char *)(ptr+1)+size;
+				remPtr->isFree=1;
+				remPtr->data=remPtr+1;
+				remPtr->size=rem;
+				remPtr->next=ptr->next;
+				ptr->size=size;
+				ptr->next = remPtr;
+				if(remPtr->next!=NULL){
+					remPtr->next->prev=remPtr;
+				}
+				remPtr->prev=ptr;
+				if(remPtr->prev!=NULL){
+					remPtr->prev->next=remPtr;
+				}
+			}
+
+			//printf("ok, ");
+			return (*ptr).data;
+
+		}
+
+		if(ptr->next==NULL){
+			page_entry * extra = add_shared_page();
+			if(extra==NULL){ //couln't get another pa-ge
+				break;
+			}
+			mprotect(extra->currFrame,PAGE_SIZE,PROT_READ|PROT_WRITE);
+			mergeFrames(ptr,extra->currFrame);
+			continue;	
+		}
+		ptr = (*ptr).next;
+
+	}
+
+	return NULL;
+
+
+}
+
+void * mallocThreadBlock(size_t size, tcb * thread){
+	if(thread->page_count==0){
+		add_user_page(thread);	
+	}
+
+	page_entry * currPage=thread->addr_list[0];
+	meta * ptr = &((currPage->currFrame)->start);
+
+	while((ptr)!= NULL) {//this loop searches for a meta that doesn't point to another node
+
+		if((*ptr).isFree == 1 && (*ptr).size >= size) {	//again checks for a reusable meta of same size
+
+			(*ptr).isFree = 0;
+			errno = 0;
+			int rem =ptr->size-(sizeof(meta)+size);
+			if(rem>0){
+				meta * remPtr= (char *)(ptr+1)+size;
+				remPtr->isFree=1;
+				remPtr->data=remPtr+1;
+				remPtr->size=rem;
+				remPtr->next=ptr->next;
+				ptr->size=size;
+				ptr->next = remPtr;
+				if(remPtr->next!=NULL){
+					remPtr->next->prev=remPtr;
+				}
+				remPtr->prev=ptr;
+				if(remPtr->prev!=NULL){
+					remPtr->prev->next=remPtr;
+				}
+			}
+			check_sys_list();
+			//printf("ok, ");
+			return (*ptr).data;
+
+		}
+
+		if(ptr->next==NULL){
+			page_entry * extra = add_user_page(thread);
+			if(extra==NULL){ //couln't get another pa-ge
+				break;
+			}
+			mprotect(extra->currFrame,PAGE_SIZE,PROT_READ|PROT_WRITE);
+			mergeFrames(ptr,extra->currFrame);
+			check_sys_list();
+			continue;	
+		}
+		ptr = (*ptr).next;
+
+	}
+
+
+
+
+	/*char * rem =(char*)(ptr + 1) + (*ptr).size + size;
+	  char * end= (char *)(currPage->currFrame) + PAGE_SIZE;
+	  if(rem>end){ //link up block between frames?
+	  int running_size=0
+	  running_size+=ptr->size;
+	  frame* nextFrame=end;
+
+	  tcb * currThread=getCurrThread();
+	  frame * lastFrame=(char *)(currThread->addr_list[currThread->page_count-1]->realFrame)+PAGE_SIZE; //End bound of last possible frame to link with
+
+	  while(running_size<=size){
+	  if(nextFrame>=lastFrame){
+	  return NULL; //peeking frame is last frame given to thread
+	  }
+	  meta * frameStart=nextFrame->start;
+	  if(frameStart->isFree){
+	  ptr->size=ptr->size+sizeof(meta)+frameStart->size;
+	  ptr->next=frameStart->next;
+	  running_size-=frameStart->size;
+	  }else{
+	  return NULL; //Not enough space to link up and fulfill request
+	  }
+	  nextFrame=(char *)nextFrame+PAGE_SIZE;
+
+	  }	
+
+
+	  }
+
+	  meta * newMem;								//a new node is made
+	  newMem = (meta*)((char*)(ptr + 1) + (*ptr).size);
+	  (*ptr).next = newMem;
+	  (*newMem).prev = ptr;
+	  (*newMem).size = size;
+	  (*newMem).isFree = 0;
+	  (*newMem).data = (char *)(newMem + 1);
+	  (*newMem).next = NULL;
+
+
+	  errno = 0;	//if malloc succeeds then errno is set to 0 otherwise it is set to -1
+	//printf("ok, ");
+	return (*newMem).data;*/
+	return NULL;
+
+
+}
+
+void * mallocSysBlock(size_t size){
+
+	meta * ptr= &(page_table[OS_PAGE_START].currFrame->start);
+	while((ptr)!= NULL) {//this loop searches for a meta that doesn't point to another node
+		if((*ptr).isFree == 1 && (*ptr).size >= size) {	//again checks for a reusable meta of same size
+
+			(*ptr).isFree = 0;
+			errno = 0;
+			int rem =ptr->size-(sizeof(meta)+size);
+			if(rem>0){
+				meta * remPtr= (char *)(ptr+1)+size;
+				remPtr->isFree=1;
+				remPtr->data=remPtr+1;
+				remPtr->size=rem;
+				remPtr->next=ptr->next;
+				ptr->size=size;
+				ptr->next = remPtr;
+				if(remPtr->next!=NULL){
+					remPtr->next->prev=remPtr;
+				}
+				remPtr->prev=ptr;
+				if(remPtr->prev!=NULL){
+					remPtr->prev->next=remPtr;
+				}
+			}
+			check_sys_list();
+			//printf("ok, ");
+			return (*ptr).data;
+
+		}
+
+		if(ptr->next==NULL){
+			page_entry * extra = add_sys_page();
+			if(extra==NULL){ //couln't get another pa-ge
+				break;
+			}
+			extra->realFrame=extra->currFrame;
+			mergeFrames(ptr,extra->realFrame);
+			continue;	
+		}
+		ptr = (*ptr).next;
+
+	}
+
+
+}
+
+void freeBlock(void *pointer){
+
+	meta* ptr = (meta*)pointer - 1; //gets the meta * ptr that points to the malloced pointer
+
+
+	//printf("freed, ");
+	(*ptr).isFree = 1;		//inUse is set to 0 because the pointer was freed
+
+	meta * mergePtr = (*ptr).next;	//if the next meta is not in use the metas must be fused
+	if(mergePtr != NULL) {	//the meta left is the one currently pointed to ie ptr
+
+		if((*mergePtr).isFree == 1) {
+
+			(*ptr).size = (*ptr).size + (*mergePtr).size + sizeof(meta);
+			(*ptr).next = (*mergePtr).next;
+			if((*mergePtr).next != NULL) {
+				mergePtr->next->prev = ptr;
+			}
+
+		}
+
+	}
+
+	mergePtr = (*ptr).prev;		//if the previous meta is not in use the metas must be merged
+	if(mergePtr != NULL) {		//meta left is the  previous to the pointer that we freed
+
+		if((*mergePtr).isFree == 1) {
+
+			(*mergePtr).size = (*mergePtr).size + (*ptr).size + sizeof(meta);
+			(*mergePtr).next = (*ptr).next;
+			if((*ptr).next != NULL) {
+
+				ptr->next->prev = mergePtr;
+			}
+
+		}
+
+	}
+
+	errno = 0;		//if free succeeds then errno is set to zero otherwise it is set to -1
+
+
+}
+
+void * myallocate(size_t size,char * file, int line,  int sys) {
+	if (!been_inited) {
+		init_memory();
+		been_inited=1;
+	}
+	int i;
+	void * ptr= NULL;
+	__atomic_test_and_set(&mode,0);
+	if (sys == LIBRARYREQ) {
+		ptr=mallocSysBlock(size);
+	}
+	else if (sys == THREADREQ) {
+		unprotect_sys();
+		tcb * currThread= getCurrThread();
+		page_entry ** list = currThread->addr_list;
+		ptr=mallocThreadBlock(size, currThread);
+		protect_sys();
+
+	}
+	__atomic_clear(&mode,0);
+	return ptr;
+}
+
+void * shalloc(size_t size){
+	if (!been_inited) {
+		init_memory();
+		been_inited=1;
+	}
+	__atomic_test_and_set(&mode,0);
+	unprotect_sys();
+	void * ptr=mallocSharedBlock(size);	
+	protect_sys();
+	__atomic_clear(&mode,0);
+	return ptr;
+
+}
+
+void mydeallocate(void *ptr, char * file, int line, int mode){
+	if (!been_inited) {
+		init_memory();
+		been_inited=1;
+	}
+	__atomic_test_and_set(&mode,0);
+	unprotect_sys();
+	freeBlock(ptr );
+	protect_sys();
+	__atomic_clear(&mode,0);
+	//freeBlock(ptr, NULL);
+}
