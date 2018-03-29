@@ -6,14 +6,14 @@
 #include<unistd.h>
 #include<sys/time.h>
 #include<time.h>
-#include "../my_pthread.c"
+#include "my_pthread.c"
 
 my_pthread_mutex_t mutex;
 
 int func1(int y){
     int f;
     long int average_F = 0;
-    for(f = 1; f<=1000; f++){
+    for(f = 1; f<=10000; f++){
         struct timeval tv;
         suseconds_t start;
         gettimeofday(&tv , NULL);

@@ -6,7 +6,7 @@
 #include<unistd.h>
 #include<sys/time.h>
 #include<time.h>
-#include "../my_pthread.c"
+#include "my_pthread.c"
 
 my_pthread_mutex_t mutex;
 

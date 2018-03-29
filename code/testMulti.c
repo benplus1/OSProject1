@@ -68,17 +68,17 @@ int main(int argc, char ** argv){
     int f=6;
 
 	pthread_create(&t1,NULL,(void*)&func1,a);
-	/*pthread_create(&t2,NULL,(void*)&func1,b);
+	pthread_create(&t2,NULL,(void*)&func1,b);
 	pthread_create(&t3,NULL,(void*)&func1,c);
     pthread_create(&t4,NULL,(void*)&func1,d);
 	pthread_create(&t5,NULL,(void*)&func1,e);
-	pthread_create(&t6,NULL,(void*)&func1,f);*/
+	pthread_create(&t6,NULL,(void*)&func1,f);
 	pthread_join(t1,NULL);
-    	/*pthread_join(t2,NULL);
+    	pthread_join(t2,NULL);
     	pthread_join(t3,NULL);
     	pthread_join(t4,NULL);
     	pthread_join(t5,NULL);
-    	pthread_join(t6,NULL);*/
+    	pthread_join(t6,NULL);
 
 	printf("the counter is %d\n", counter);
 	//printf("Param T0: %d %lx\n",*arr[0],arr[0]);

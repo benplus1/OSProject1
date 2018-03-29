@@ -38,7 +38,7 @@ int numLevels=3;
 int isHandling=0;
 int didStart=0;
 struct itimerval timer;
-int memSize=4096;
+int memSize=4*4096;
 int stuckHereCtr = 0;
 //ucontext_t * tailFunc;
 
@@ -740,9 +740,9 @@ void testMem(char * ptr){
 
 //init functions
 static void handler(int sig, siginfo_t *si, void *unused) {
-	printf("Got SIGSEGV at address: 0x%lx\n",(long) si->si_addr);
+	//printf("Got SIGSEGV at address: 0x%lx\n",(long) si->si_addr);
 	tcb * currThread = getCurrThread();
-	printf("currthread is: %d\n", currThread->tid);
+	//printf("currthread is: %d\n", currThread->tid);
 	long prob_addr = (long) si->si_addr;
 	page_entry ** addrs = currThread->addr_list;
 	unprotect_sys();
@@ -750,7 +750,7 @@ static void handler(int sig, siginfo_t *si, void *unused) {
 	for (i = 0; i < currThread->page_count; i++) {
 		page_entry * currPage = addrs[i];
 		if ((currPage->realFrame) <= prob_addr && ((char *)(currPage->realFrame)+PAGE_SIZE>prob_addr)){
-			printf("valid page: %d\n", prob_addr);
+			//printf("valid page: %d\n", prob_addr);
 
 			if(currPage->inRAM){
 				if (currPage->in_mem_swapped) {
@@ -785,7 +785,7 @@ void unprotect_sys(){
 	//if(isSys) return ;
 	int res=mprotect(myMemory,(USER_PAGE_START)*PAGE_SIZE,PROT_READ|PROT_WRITE); //Protect all un malloced pages except one with page table
 
-	if(res==-1) printf("damn\n");
+	//if(res==-1) printf("damn\n");
 	isSys=true;
 }
 
@@ -1098,7 +1098,7 @@ page_entry * add_user_page(tcb * thread){
 	
 		page_entry * victim = evict(EVICT_MODE);
 		if(victim==NULL){
-			printf("No victim\n");
+			//printf("No victim\n");
 			return NULL;
 		}
 		
@@ -1107,7 +1107,7 @@ page_entry * add_user_page(tcb * thread){
 	}	
 
 	if(page->currFrame==NULL){
-		printf("PAGE CURR FRAME NULL WHAAAAT\n");
+		//printf("PAGE CURR FRAME NULL WHAAAAT\n");
 	}
 	if(thread->page_count>0){
 		page_entry * prev=thread->addr_list[thread->page_count-1];
@@ -1193,7 +1193,7 @@ void init_signal() {
 
 	if (sigaction(SIGSEGV, &sa, NULL) == -1)
 	{
-		printf("Fatal error setting up signal handler\n");
+		//printf("Fatal error setting up signal handler\n");
 		exit(EXIT_FAILURE);    //explode!
 	}
 }
@@ -1225,7 +1225,7 @@ void check_sys_list(){
 	int i=0;
 	while(ptr!=NULL){
 		if(ptr->isFree>1){
-			printf("Ptr fuked at %d\n",i);
+			//printf("Ptr fuked at %d\n",i);
 		}
 		i++;
 		ptr=ptr->next;
@@ -1234,7 +1234,7 @@ void check_sys_list(){
 
 page_entry * use_page(int mode) {
 	//tcb * curr=getCurrThread();
-	check_sys_list();
+	//check_sys_list();
 	if (mode==LIBRARYREQ) {
 		if(OS_PAGE_START+OS_PAGE_COUNT<1024){
 			page_entry * p = &page_table[OS_PAGE_START+OS_PAGE_COUNT];
@@ -1269,8 +1269,8 @@ page_entry * use_page(int mode) {
 		
 		return NULL;
 	}
-	check_sys_list();
-	printf("Wrong\n");
+	//check_sys_list();
+	//printf("Wrong\n");
 	return NULL;
 }
 
@@ -1360,11 +1360,11 @@ void * mallocSharedBlock(size_t size){
 }
 
 void * mallocThreadBlock(size_t size, tcb * thread){
-	check_sys_list();
+	//check_sys_list();
 	if(thread->page_count==0){
 		add_user_page(thread);	
 	}
-	check_sys_list();
+	//check_sys_list();
 
 	page_entry * currPage=thread->addr_list[0];
 	meta * ptr = &((currPage->currFrame)->start);
@@ -1372,7 +1372,7 @@ void * mallocThreadBlock(size_t size, tcb * thread){
 	while((ptr)!= NULL) {//this loop searches for a meta that doesn't point to another node
 
 		if((*ptr).isFree == 1 && (*ptr).size >= size) {	//again checks for a reusable meta of same size
-			check_sys_list();
+			//check_sys_list();
 			(*ptr).isFree = 0;
 			errno = 0;
 			int rem =ptr->size-(sizeof(meta)+size);
@@ -1392,21 +1392,21 @@ void * mallocThreadBlock(size_t size, tcb * thread){
 					remPtr->prev->next=remPtr;
 				}
 			}
-			check_sys_list();
+			//check_sys_list();
 			//printf("ok, ");
 			return (*ptr).data;
 
 		}
 
 		if(ptr->next==NULL){
-			check_sys_list();
+			//check_sys_list();
 			page_entry * extra = add_user_page(thread);
 			if(extra==NULL){ //couln't get another pa-ge
 				break;
 			}
 			mprotect(extra->currFrame,PAGE_SIZE,PROT_READ|PROT_WRITE);
 			mergeFrames(ptr,extra->currFrame);
-			check_sys_list();
+			//check_sys_list();
 			continue;	
 		}
 		ptr = (*ptr).next;
@@ -1423,7 +1423,7 @@ void * mallocSysBlock(size_t size){
 	meta * ptr= &(page_table[OS_PAGE_START].currFrame->start);
 	while((ptr)!= NULL) {//this loop searches for a meta that doesn't point to another node
 		if((*ptr).isFree == 1 && (*ptr).size >= size) {	//again checks for a reusable meta of same size
-			check_sys_list();
+			//check_sys_list();
 			(*ptr).isFree = 0;
 			errno = 0;
 			int rem =ptr->size-(sizeof(meta)+size);
@@ -1443,21 +1443,21 @@ void * mallocSysBlock(size_t size){
 					remPtr->prev->next=remPtr;
 				}
 			}
-			check_sys_list();
+			//check_sys_list();
 			//printf("ok, ");
 			return (*ptr).data;
 
 		}
 
 		if(ptr->next==NULL){
-			check_sys_list();
+			//check_sys_list();
 			page_entry * extra = add_sys_page();
 			if(extra==NULL){ //couln't get another pa-ge
 				break;
 			}
 			extra->realFrame=extra->currFrame;
 			mergeFrames(ptr,extra->realFrame);
-			check_sys_list();
+			//check_sys_list();
 			continue;	
 		}
 		ptr = (*ptr).next;
@@ -1468,7 +1468,7 @@ void * mallocSysBlock(size_t size){
 }
 
 void freeBlock(void *pointer){
-	check_sys_list();
+	//check_sys_list();
 	meta* ptr = (meta*)pointer - 1; //gets the meta * ptr that points to the malloced pointer
 
 
@@ -1505,7 +1505,7 @@ void freeBlock(void *pointer){
 		}
 
 	}
-	check_sys_list();
+	//check_sys_list();
 	errno = 0;		//if free succeeds then errno is set to zero otherwise it is set to -1
 
 
